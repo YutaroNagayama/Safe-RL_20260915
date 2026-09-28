@@ -1,0 +1,17 @@
+policy:
+  backend: SAC
+  execution_mode: mean
+graph:
+  actor_aggregation_backend: graph
+  critic_aggregation_backend: graph
+safety:
+  enabled: true
+  responsibility_mode: capability
+  conflict_resolver_enabled: true
+communication:
+  unimp_enabled: true
+  information_mode: prior_share
+objective:
+  distance_cost_enabled: true
+  intervention_cost_enabled: true
+  w_intervention: 1.0

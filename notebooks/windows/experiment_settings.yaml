@@ -1,0 +1,195 @@
+experiment:
+  result_index: 1
+  scale: pilot                 # smoke / pilot / main
+  results_root: results
+  regenerate_scenarios: false
+  skip_completed_seeds: true
+
+profiles:
+  smoke:
+    training_seeds: [0]
+    agent_counts: [2, 4]
+    training_scenarios_per_n: 5
+    evaluation_scenarios_per_n: 2
+  pilot:
+    training_seeds: [0, 1, 2]
+    agent_counts: [2, 4, 8]
+    training_scenarios_per_n: 100
+    evaluation_scenarios_per_n: 30
+  main:
+    training_seeds: [0, 1, 2, 3, 4]
+    agent_counts: [2, 4, 8, 16]
+    training_scenarios_per_n: 500
+    evaluation_scenarios_per_n: 100
+
+runtime:
+  training_device: auto
+  evaluation_device: cpu
+  evaluation_workers: 0       # 0 = half the logical CPU count, capped at 8
+  open_tensorboard_browser: true
+  evaluate_hocbf_off_diagnostic: true
+
+scenario:
+  seed_training: 20260
+  seed_evaluation: 20261
+  longitudinal_length: 280.0
+  transverse_size: 280.0
+  altitude_min: -28.0
+  altitude_max: 28.0
+  minimum_initial_separation: 20.0
+  interaction_threshold: 75.0
+  prediction_horizon: 50.0
+  initial_speed_fraction_min: 0.4
+  initial_speed_fraction_max: 0.65
+  acceleration_min: 2.0
+  acceleration_max: 4.0
+  velocity_limit_min: 10.0
+  velocity_limit_max: 14.0
+  require_predicted_candidate: true
+  timeout_multiplier: 2.0
+
+base_config:
+  policy:
+    backend: SAC
+    execution_mode: mean
+    hidden_dim: 128
+    learning_rate: 0.0003
+    alpha_learning_rate: 0.0003
+    entropy_alpha_initial: 0.2
+    entropy_autotune: true
+  graph:
+    actor_aggregation_backend: graph
+    critic_aggregation_backend: graph
+    actor_embedding_dim: 32
+    actor_hidden_dim: 64
+    actor_layers: 1
+    actor_attention_heads: 2
+    critic_embedding_dim: 128
+    critic_hidden_dim: 128
+    critic_layers: 2
+    critic_attention_heads: 4
+    critic_edge_mode: fully_connected
+  safety:
+    enabled: true
+    responsibility_mode: capability
+    conflict_resolver_enabled: true
+    d_safe: 10.0
+    d_warn: 30.0
+    d_eng: 50.0
+    k1: 1.0
+    k2: 1.0
+    speed_constraint_mode: norm
+  communication:
+    unimp_enabled: true
+    information_mode: prior_share
+    actor_period_k: 5
+    delay_steps: 1
+  control:
+    actor_mode: residual
+    reference_speed_fraction: 0.75
+    reference_velocity_gain: 0.8
+    residual_acceleration_fraction: 0.5
+    reference_update_steps: 1
+  environment:
+    dt_base: 0.1
+    goal_tolerance: 5.0
+    acceleration_limit: 3.0
+    velocity_limit: 12.0
+    goal_completion_mode: exit_airspace
+  scenario:
+    spatial_scaling_mode: fixed
+    longitudinal_length: 280.0
+    transverse_size: 280.0
+    altitude_min: -28.0
+    altitude_max: 28.0
+    volume_scale_min: 1.0
+    volume_scale_max: 1.0
+    minimum_initial_separation: 20.0
+    interaction_threshold: 75.0
+    prediction_horizon: 50.0
+    initial_speed_fraction_min: 0.4
+    initial_speed_fraction_max: 0.65
+    require_predicted_candidate: true
+  objective:
+    goal_reward: 15.0
+    w_progress: 1.0
+    w_time: 0.01
+    absolute_distance_enabled: false
+    absolute_distance_scale: 280.0
+    w_absolute_distance: 0.002
+    distance_cost_enabled: true
+    intervention_cost_enabled: true
+    w_intervention: 1.0
+    progress_mode: normalized_goal_delta
+    residual_penalty_enabled: true
+    w_residual: 0.01
+  learning:
+    gamma_reward: 0.99
+    gamma_cost: 0.99
+    d_cost: 3.0                # Pilot provisional; not frozen for Main
+    cal_lambda_initial: 0.0
+    cal_lambda_lr: 0.01
+    cal_coefficient: 1.0
+    cost_ensemble_size: 2
+    beta_ucb: 1.0
+    batch_size: 256
+    buffer_size: 100000
+    cal_mode: pdf_variant
+    constraint_semantics: episodic_start_state
+    cal_variant: episodic_dual_replay_gradient
+    initial_state_buffer_size: 10000
+  training:
+    # Pilot provisional: 80k per seed x 3 seeds = 240k training steps total.
+    # Chosen to target roughly six hours including fixed-bank evaluation.
+    total_environment_steps_budget: 80000
+    learning_starts: 2000       # Pilot candidate; compare/adjust before Main
+    updates_per_environment_step: 1
+    actor_update_period: 1      # 1=standard SAC; Pre-Main Gate compares only 1 vs 2
+    dual_learning_starts: 2000
+    dual_update_period: 1
+    dual_batch_size: 256
+  performance:
+    profile: exact
+    safety_backend: auto
+    safety_workers: 0
+    safety_parallel_min_agents: 8
+    evaluation_workers: 0
+    training_workers: 1
+    workers_per_gpu: 1
+    torch_num_threads: 0
+    torch_interop_threads: 1
+    blas_threads_per_worker: 1
+    cuda_non_blocking_transfer: true
+    mixed_precision: false
+    torch_compile: false
+    allow_tf32: false
+
+methods:
+  A:
+    name: Full-Prior
+    overrides: {}
+  B:
+    name: Full-Reactive
+    overrides:
+      communication:
+        information_mode: reactive_share
+  C:
+    name: Residual-Prior (No Runtime HOCBF)
+    overrides:
+      safety:
+        enabled: false
+  D:
+    name: Residual-Reactive (No Runtime HOCBF)
+    overrides:
+      communication:
+        information_mode: reactive_share
+      safety:
+        enabled: false
+  E:
+    name: HOCBF-only
+    train: false
+    overrides:
+      control:
+        actor_mode: reference_only
+      communication:
+        information_mode: none

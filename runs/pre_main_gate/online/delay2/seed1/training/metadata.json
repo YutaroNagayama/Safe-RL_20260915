@@ -1,0 +1,193 @@
+{
+  "created_at": "2026-10-08T02:49:56.531003+00:00",
+  "config": {
+    "policy": {
+      "backend": "SAC",
+      "execution_mode": "mean",
+      "hidden_dim": 128,
+      "learning_rate": 0.0003,
+      "alpha_learning_rate": 0.0003,
+      "entropy_alpha_initial": 0.2,
+      "entropy_autotune": true
+    },
+    "graph": {
+      "actor_aggregation_backend": "graph",
+      "critic_aggregation_backend": "graph",
+      "actor_embedding_dim": 32,
+      "actor_hidden_dim": 64,
+      "actor_layers": 1,
+      "actor_attention_heads": 2,
+      "critic_embedding_dim": 128,
+      "critic_hidden_dim": 128,
+      "critic_layers": 2,
+      "critic_attention_heads": 4,
+      "critic_edge_mode": "fully_connected"
+    },
+    "safety": {
+      "enabled": true,
+      "responsibility_mode": "capability",
+      "conflict_resolver_enabled": true,
+      "d_safe": 10.0,
+      "d_warn": 30.0,
+      "d_eng": 50.0,
+      "k1": 1.0,
+      "k2": 1.0,
+      "speed_constraint_mode": "norm"
+    },
+    "communication": {
+      "unimp_enabled": true,
+      "information_mode": "prior_share",
+      "actor_period_k": 5,
+      "delay_steps": 1
+    },
+    "control": {
+      "actor_mode": "residual",
+      "reference_speed_fraction": 0.75,
+      "reference_velocity_gain": 0.8,
+      "residual_acceleration_fraction": 0.5,
+      "reference_update_steps": 1
+    },
+    "environment": {
+      "dt_base": 0.1,
+      "max_steps": 1894,
+      "goal_tolerance": 5.0,
+      "agent_count": 2,
+      "max_agent_count": 16,
+      "acceleration_limit": 3.0,
+      "velocity_limit": 12.0,
+      "goal_completion_mode": "exit_airspace"
+    },
+    "scenario": {
+      "spatial_scaling_mode": "fixed",
+      "longitudinal_length": 280.0,
+      "transverse_size": 280.0,
+      "altitude_min": -28.0,
+      "altitude_max": 28.0,
+      "volume_scale_min": 1.0,
+      "volume_scale_max": 1.0,
+      "minimum_initial_separation": 20.0,
+      "interaction_threshold": 75.0,
+      "prediction_horizon": 50.0,
+      "initial_speed_fraction_min": 0.4,
+      "initial_speed_fraction_max": 0.65,
+      "require_predicted_candidate": true,
+      "training_agent_count_distribution": {
+        "2": 0.25,
+        "4": 0.25,
+        "8": 0.25,
+        "16": 0.25
+      }
+    },
+    "objective": {
+      "goal_reward": 15.0,
+      "w_progress": 1.0,
+      "w_time": 0.01,
+      "absolute_distance_enabled": false,
+      "absolute_distance_scale": 280.0,
+      "w_absolute_distance": 0.002,
+      "distance_cost_enabled": true,
+      "intervention_cost_enabled": true,
+      "w_intervention": 1.0,
+      "progress_mode": "normalized_goal_delta",
+      "residual_penalty_enabled": true,
+      "w_residual": 0.01
+    },
+    "learning": {
+      "gamma_reward": 0.99,
+      "gamma_cost": 0.99,
+      "d_cost": 6.0,
+      "cal_lambda_initial": 0.0,
+      "cal_lambda_lr": 0.001,
+      "cal_coefficient": 1.0,
+      "cost_ensemble_size": 2,
+      "beta_ucb": 1.0,
+      "batch_size": 256,
+      "buffer_size": 200000,
+      "cal_mode": "pdf_variant",
+      "constraint_semantics": "episodic_start_state",
+      "cal_variant": "episodic_dual_replay_gradient",
+      "initial_state_buffer_size": 10000,
+      "cost_target_n_step": 10
+    },
+    "training": {
+      "total_environment_steps_budget": 30000,
+      "learning_starts": 1,
+      "updates_per_environment_step": 1,
+      "actor_update_period": 2,
+      "checkpoint_every_episodes": 5,
+      "dual_learning_starts": 1,
+      "dual_update_period": 1,
+      "dual_batch_size": 256,
+      "dual_update_mode": "episode",
+      "dual_update_interval_episodes": 1
+    },
+    "monitoring": {
+      "enabled": true,
+      "progress_bar": true,
+      "tensorboard": true,
+      "auto_launch_tensorboard": false,
+      "open_browser": false,
+      "tensorboard_host": "127.0.0.1",
+      "tensorboard_port": 0,
+      "step_refresh_interval": 25
+    },
+    "performance": {
+      "profile": "exact",
+      "safety_backend": "serial",
+      "safety_workers": 0,
+      "safety_parallel_min_agents": 8,
+      "evaluation_workers": 0,
+      "training_workers": 1,
+      "workers_per_gpu": 1,
+      "torch_num_threads": 0,
+      "torch_interop_threads": 1,
+      "blas_threads_per_worker": 1,
+      "cuda_non_blocking_transfer": true,
+      "mixed_precision": false,
+      "torch_compile": false,
+      "allow_tf32": false,
+      "deterministic_algorithms": false
+    },
+    "seed": 1,
+    "device": "cuda"
+  },
+  "runtime": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "system": "Windows",
+    "machine": "AMD64",
+    "python": "3.12.1 | packaged by Anaconda, Inc. | (main, Jan 19 2024, 15:44:08) [MSC v.1916 64 bit (AMD64)]",
+    "logical_cpu_count": 24,
+    "numpy": "2.5.3",
+    "gymnasium": "1.3.0",
+    "torch": "2.14.0+cu126",
+    "cuda_available": true,
+    "torch_cuda": "12.6",
+    "cuda_device_count": 1,
+    "cuda_devices": [
+      "NVIDIA GeForce RTX 4080 Laptop GPU"
+    ],
+    "mps_available": false,
+    "cuda_device_memory_bytes": [
+      12878086144
+    ],
+    "requested_device": "cuda",
+    "performance": {
+      "profile": "exact",
+      "safety_backend": "serial",
+      "safety_workers": 0,
+      "safety_parallel_min_agents": 8,
+      "evaluation_workers": 0,
+      "training_workers": 1,
+      "workers_per_gpu": 1,
+      "torch_num_threads": 0,
+      "torch_interop_threads": 1,
+      "blas_threads_per_worker": 1,
+      "cuda_non_blocking_transfer": true,
+      "mixed_precision": false,
+      "torch_compile": false,
+      "allow_tf32": false,
+      "deterministic_algorithms": false
+    }
+  },
+  "git_commit": "db1c267c2218536ba3b10640d7e361516d20b4d6"
+}

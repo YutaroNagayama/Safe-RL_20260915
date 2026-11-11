@@ -206,8 +206,11 @@ class SACBackend:
             next_logp = next_logp * data["next_is_actor_decision_tick"]
             next_reward = torch.minimum(*self._reward_values(self.reward_targets, next_critic_state, next_action)) - self.alpha.detach() * next_logp
             reward_target = data["reward"] + self.config.learning.gamma_reward * data["bootstrap_mask"] * next_reward
-            next_cost_members = self._cost_values(self.cost_targets, next_critic_state, next_action)
-            cost_target = data["cost"].unsqueeze(0) + self.config.learning.gamma_cost * data["bootstrap_mask"].unsqueeze(0) * next_cost_members
+            # With n-step Cost data this target is unused. Cost encoders have
+            # no stochastic/stateful layers, so omitting it preserves RNG.
+            if cost_batch is None:
+                next_cost_members = self._cost_values(self.cost_targets, next_critic_state, next_action)
+                cost_target = data["cost"].unsqueeze(0) + self.config.learning.gamma_cost * data["bootstrap_mask"].unsqueeze(0) * next_cost_members
         reward_loss = sum(F.mse_loss(value, reward_target) for value in self._reward_values(self.reward_critics, critic_state, nominal))
         cost_horizon = 1.0
         if cost_batch is None:

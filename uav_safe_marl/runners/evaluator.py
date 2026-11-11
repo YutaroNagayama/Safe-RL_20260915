@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Any
+from time import perf_counter
 
 import numpy as np
 
@@ -80,11 +81,15 @@ def evaluate(
         step_costs: list[float] = []
         policy_observations: list[Any] = []
         actor_phases: list[int] = []
+        safety_diagnostics: list[Any] = []
+        safety_wall_times: list[float] = []
+        evaluation_tick_times: list[float] = []
         per_agent_path = np.zeros(trainer.config.environment.capacity, dtype=np.float64)
         violation_count = pair_tick_count = active_agent_ticks = 0
         pure_squared_sum = runtime_squared_sum = 0.0
         terminated = truncated = False
         for step in range(trainer.config.environment.max_steps):
+            tick_started = perf_counter()
             delivered = trainer.communication.receive(step, trainer.env.active_mask)
             trainer._merge_messages(cache, delivered)
             trainer._purge_invalid_cache(cache)
@@ -161,6 +166,9 @@ def evaluate(
             cost_components.append(dict(info["cost_terms"]))
             step_rewards.append(float(reward))
             step_costs.append(float(info["cost"]))
+            safety_diagnostics.append(info["safety"])
+            safety_wall_times.append(trainer.env.last_safety_solve_time)
+            evaluation_tick_times.append(perf_counter() - tick_started)
             if terminated or truncated:
                 break
         actual_count = int(reset_info["actual_agent_count"])
@@ -261,6 +269,9 @@ def evaluate(
                 "paired_initial_nominal_matches_rollout": bool(np.allclose(conditioned_nominal, actual_initial_nominal, rtol=1e-5, atol=1e-5)),
             })
         rollout = {
+            "safety_diagnostics": safety_diagnostics,
+            "safety_wall_times": np.asarray(safety_wall_times),
+            "evaluation_tick_times": np.asarray(evaluation_tick_times),
             "reset_info": reset_info,
             "positions": position_history,
             "velocities": np.stack(velocities),

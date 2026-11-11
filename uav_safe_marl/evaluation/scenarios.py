@@ -142,6 +142,9 @@ def interaction_descriptor(
 
 def _face_point(rng: np.random.Generator, face: str, longitudinal_length: float, transverse_width: float, altitude_range: tuple[float, float]) -> np.ndarray:
     """Sample one point on an entry/exit face of an imaginary corridor."""
+    if face in ("y_min", "y_max"):
+        y = -transverse_width / 2.0 if face == "y_min" else transverse_width / 2.0
+        return np.array([rng.uniform(-longitudinal_length / 2.0, longitudinal_length / 2.0), y, rng.uniform(*altitude_range)])
     x = -longitudinal_length / 2.0 if face == "x_min" else longitudinal_length / 2.0
     return np.array([x, rng.uniform(-transverse_width / 2.0, transverse_width / 2.0), rng.uniform(*altitude_range)])
 
@@ -153,16 +156,25 @@ def _boundary_crossing_routes(
     transverse_width: float,
     altitude_range: tuple[float, float],
     minimum_distance: float,
+    entry_layout: str = "two_faces",
 ) -> tuple[np.ndarray, np.ndarray, list[str], list[str]]:
-    """Generate separated entry points and opposite-face exit waypoints."""
+    """Generate separated entry and exit points on distinct faces."""
     starts: list[np.ndarray] = []
     goals: list[np.ndarray] = []
     entry_faces: list[str] = []
     exit_faces: list[str] = []
+    opposite = {"x_min": "x_max", "x_max": "x_min", "y_min": "y_max", "y_max": "y_min"}
+    faces = tuple(opposite)
+    exits_by_entry = {face: tuple(other for other in faces if other != face) for face in faces}
     for _ in range(count):
         for _ in range(100_000):
-            entry = "x_min" if rng.random() < 0.5 else "x_max"
-            exit_face = "x_max" if entry == "x_min" else "x_min"
+            if entry_layout == "four_faces":
+                entry = faces[int(rng.integers(len(faces)))]
+                exits = exits_by_entry[entry]
+                exit_face = exits[int(rng.integers(len(exits)))]
+            else:
+                entry = "x_min" if rng.random() < 0.5 else "x_max"
+                exit_face = opposite[entry]
             start = _face_point(rng, entry, longitudinal_length, transverse_width, altitude_range)
             goal = _face_point(rng, exit_face, longitudinal_length, transverse_width, altitude_range)
             if all(np.linalg.norm(start - other) >= minimum_distance for other in starts) and all(np.linalg.norm(goal - other) >= minimum_distance for other in goals):
@@ -194,6 +206,7 @@ def generate_random_traffic_bank(
     acceleration_range: tuple[float, float] = (3.0, 3.0),
     velocity_limit_range: tuple[float, float] = (12.0, 12.0),
     require_predicted_conflict: bool = True,
+    entry_layout: str = "two_faces",
 ) -> list[dict]:
     """Generate exact boundary-crossing scenarios with natural graph complexity."""
     counts = [int(agent_count)] if isinstance(agent_count, (int, np.integer)) else [int(value) for value in agent_count]
@@ -201,6 +214,8 @@ def generate_random_traffic_bank(
         raise ValueError("agent_count choices must be >=2 and scenario_count positive")
     if not 0 < d_safe < d_warn <= d_eng < los_prediction_threshold:
         raise ValueError("require 0 < d_safe < d_warn <= d_eng < los_prediction_threshold")
+    if entry_layout not in {"two_faces", "four_faces"}:
+        raise ValueError("entry_layout must be two_faces or four_faces")
     if spatial_scaling_mode not in {"fixed", "density_controlled"}:
         raise ValueError("spatial_scaling_mode must be fixed or density_controlled")
     if base_size <= 0.0 or transverse_size <= 0.0 or minimum_initial_distance <= 0.0:
@@ -239,7 +254,7 @@ def generate_random_traffic_bank(
                 altitude_center = 0.5 * (altitude_range[0] + altitude_range[1])
                 altitude_half_span = 0.5 * (altitude_range[1] - altitude_range[0]) * cross_scale
                 scaled_altitude = (altitude_center - altitude_half_span, altitude_center + altitude_half_span)
-            positions, goals, entry_faces, exit_faces = _boundary_crossing_routes(rng, count, base_size, transverse_width, scaled_altitude, minimum_initial_distance)
+            positions, goals, entry_faces, exit_faces = _boundary_crossing_routes(rng, count, base_size, transverse_width, scaled_altitude, minimum_initial_distance, entry_layout)
             route_lengths = np.linalg.norm(goals - positions, axis=1)
             directions = (goals - positions) / np.maximum(route_lengths[:, None], 1e-12)
             accelerations = rng.uniform(*acceleration_range, size=count)
@@ -273,10 +288,13 @@ def generate_random_traffic_bank(
             "candidate_zero_rejections": rejected_without_candidate,
             "initial_cbf_edge_count": sum(float(pair["initial_distance"]) <= d_eng for pair in pair_data),
         })
+        four_faces = entry_layout == "four_faces"
+        prefix = "interaction_traffic_four_faces_free" if four_faces else "interaction_traffic"
+        version = 8 if four_faces else 6
         scenarios.append({
-            "scenario_id": f"interaction_traffic_n{count}_root{seed}_{index:04d}",
-            "generator": "boundary_interaction_traffic_v6", "generator_version": 6,
-            "geometry": "boundary_crossing_corridor",
+            "scenario_id": f"{prefix}_n{count}_root{seed}_{index:04d}",
+            "generator": f"boundary_interaction_traffic_v{version}", "generator_version": version,
+            "geometry": "four_face_crossing" if four_faces else "boundary_crossing_corridor",
             "spatial_scaling_mode": spatial_scaling_mode,
             "scenario_seed_entropy": child.entropy, "scenario_seed_spawn_key": list(child.spawn_key),
             "generation_attempts": attempt, "candidate_zero_rejections": rejected_without_candidate,

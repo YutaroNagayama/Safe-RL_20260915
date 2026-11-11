@@ -88,7 +88,10 @@ class ActiveSetQPSolver:
         if len(matrix) == 0 and ball is None:
             return nominal.copy(), True
 
-        candidates: list[np.ndarray] = [nominal] if self._feasible(nominal, matrix, vector, ball) else []
+        # A feasible nominal has zero projection cost, the global minimum.
+        if self._feasible(nominal, matrix, vector, ball):
+            return nominal, True
+        candidates: list[np.ndarray] = []
         for count in range(1, min(3, len(matrix)) + 1):
             for indices in combinations(range(len(matrix)), count):
                 active = matrix[list(indices)]

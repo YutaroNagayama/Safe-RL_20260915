@@ -44,8 +44,10 @@ class SafeRLTrainer:
         self.config, self.env = config, env
         self.encoder = UniMPEncoder(config.communication.unimp_enabled)
         self.graph_mode = config.graph.actor_aggregation_backend == "graph"
-        self.communication = P2PCommunication(config.communication.information_mode, config.communication.delay_steps, config.safety.d_eng, config.communication.actor_period_k)
-        self.buffer = NumpyReplayBuffer(config.learning.buffer_size, config.seed)
+        reactive_radius = config.communication.reactive_radius
+        self.communication = P2PCommunication(config.communication.information_mode, config.communication.delay_steps, config.safety.d_eng if reactive_radius is None else reactive_radius, config.communication.actor_period_k)
+        replay_dtype = np.float32 if config.performance.profile == "fast" else np.float64
+        self.buffer = NumpyReplayBuffer(config.learning.buffer_size, config.seed, replay_dtype)
         self.initial_state_buffer = InitialStateBuffer(config.learning.initial_state_buffer_size, config.seed + 31)
         scale = np.full((config.environment.capacity, 3), config.environment.acceleration_limit)
         if config.policy.backend.upper() == "SAC":
@@ -169,7 +171,7 @@ class SafeRLTrainer:
             episode_reward = episode_cost = discounted_cost = 0.0
             discount = 1.0
             last_losses: dict[str, float] = {}
-            totals = {key: 0.0 for key in ("goal_reward", "progress", "time_penalty", "absolute_distance_penalty", "residual_penalty", "distance_cost", "intervention_cost", "d_safe_violation_count", "cbf_intervention_count", "intervention_magnitude", "qp_infeasible_count", "conflict_resolution_count", "skipped_constraint_count", "emergency_fallback_count", "responsibility_infeasible_count", "actor_inference_time", "unimp_inference_time", "cbf_qp_solve_time", "cbf_qp_wall_time", "cbf_qp_worker_time_sum", "cbf_qp_max_agent_time", "cbf_engaged_agent_count", "cbf_engaged_pair_count", "neighbour_count")}
+            totals = {key: 0.0 for key in ("goal_reward", "progress", "time_penalty", "absolute_distance_penalty", "residual_penalty", "distance_cost", "intervention_cost", "d_safe_violation_count", "cbf_intervention_count", "intervention_magnitude", "qp_infeasible_count", "conflict_resolution_count", "skipped_constraint_count", "emergency_fallback_count", "responsibility_infeasible_count", "actor_inference_time", "unimp_inference_time", "replay_sampling_time", "gradient_update_time", "cbf_qp_solve_time", "cbf_qp_wall_time", "cbf_qp_worker_time_sum", "cbf_qp_max_agent_time", "cbf_engaged_agent_count", "cbf_engaged_pair_count", "neighbour_count")}
             minimum_distance, maximum_urgency, path_length = float("inf"), 0.0, 0.0
             minimum_goal_distances = np.asarray([
                 np.linalg.norm(state.goal - state.position) for state in self.env.states
@@ -208,6 +210,7 @@ class SafeRLTrainer:
                 )
                 if ready and self.config.control.actor_mode != "reference_only":
                     for _ in range(self.config.training.updates_per_environment_step):
+                        sampling_started = perf_counter()
                         start_distribution = self.config.scenario.training_agent_count_distribution
                         initial_batch = (
                             self.initial_state_buffer.sample(
@@ -227,8 +230,11 @@ class SafeRLTrainer:
                             if self.config.learning.cost_target_n_step > 1
                             else None
                         )
+                        replay_batch = self.buffer.sample(self.config.learning.batch_size)
+                        totals["replay_sampling_time"] += perf_counter() - sampling_started
+                        update_started = perf_counter()
                         last_losses.update(self.backend.update(
-                            self.buffer.sample(self.config.learning.batch_size),
+                            replay_batch,
                             cost_batch=cost_batch,
                             initial_state_batch=initial_batch,
                             allow_dual_update=(
@@ -236,6 +242,7 @@ class SafeRLTrainer:
                                 and self.total_environment_steps >= self.config.training.dual_learning_starts
                             ),
                         ))
+                        totals["gradient_update_time"] += perf_counter() - update_started
                         self.total_gradient_updates += 1
                 pending = None
 
@@ -475,8 +482,13 @@ class SafeRLTrainer:
         monitor.close()
         return history
 
-    def save_checkpoint(self, path: str | Path) -> None:
-        """Atomically save an episode-boundary, exact training-resume snapshot."""
+    def save_checkpoint(self, path: str | Path, *, include_replay: bool = True, extra_metadata: dict[str, Any] | None = None) -> None:
+        """Atomically save a full resume snapshot or a compact model snapshot.
+
+        ``include_replay=False`` is intended for evaluation and long-term model
+        storage.  It contains the complete learned backend and experiment
+        identity, but deliberately cannot be used to resume training exactly.
+        """
         import torch
 
         destination = Path(path)
@@ -485,6 +497,7 @@ class SafeRLTrainer:
         config_hash = hashlib.sha256(json.dumps(config_payload, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
         payload = {
             "schema_version": self.CHECKPOINT_SCHEMA_VERSION,
+            "checkpoint_kind": "full_resume" if include_replay else "model_only",
             "backend": self.backend.state_dict(),
             "config": config_payload,
             "experiment_identity": {
@@ -509,8 +522,6 @@ class SafeRLTrainer:
                 "transitions_collected_by_n": self.transitions_collected_by_n,
                 "scenario_bank_cursor": self.scenario_bank_cursor,
             },
-            "replay_buffer": self.buffer.state_dict(),
-            "initial_state_buffer": self.initial_state_buffer.state_dict(),
             "rng_state": {
                 "python": random.getstate(),
                 "numpy_global": np.random.get_state(),
@@ -518,12 +529,17 @@ class SafeRLTrainer:
                 "torch_cuda": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None,
             },
         }
+        if include_replay:
+            payload["replay_buffer"] = self.buffer.state_dict()
+            payload["initial_state_buffer"] = self.initial_state_buffer.state_dict()
+        if extra_metadata is not None:
+            payload["extra_metadata"] = extra_metadata
         temporary = destination.with_name(destination.name + ".tmp")
         torch.save(payload, temporary)
         os.replace(temporary, destination)
 
-    def load_checkpoint(self, path: str | Path, *, resume_training: bool = True) -> None:
-        """Load either an exact training resume or weights for evaluation."""
+    def load_checkpoint(self, path: str | Path, *, resume_training: bool = True, allow_budget_extension: bool = False) -> dict[str, Any]:
+        """Load a resume/evaluation checkpoint and return its extra metadata."""
         import torch
 
         payload = torch.load(Path(path), map_location=self.backend.device, weights_only=False)
@@ -538,13 +554,29 @@ class SafeRLTrainer:
             current_hash = hashlib.sha256(json.dumps(current_config, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
             expected_hash = payload.get("experiment_identity", {}).get("config_sha256")
             if expected_hash != current_hash:
-                raise ValueError("checkpoint config differs from the current resolved experiment config")
+                stored = payload["config"]
+                comparison = json.loads(json.dumps(current_config))
+                previous_budget = stored["training"].get("total_environment_steps_budget")
+                next_budget = comparison["training"].get("total_environment_steps_budget")
+                extension = (
+                    allow_budget_extension and previous_budget is not None and next_budget is not None
+                    and next_budget >= previous_budget
+                )
+                comparison["training"]["total_environment_steps_budget"] = previous_budget
+                comparison_hash = hashlib.sha256(json.dumps(comparison, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+                if not extension or comparison_hash != expected_hash:
+                    raise ValueError("checkpoint config differs from the current resolved experiment config")
             expected_source = payload.get("experiment_identity", {}).get("source_sha256")
             if expected_source != self.source_hash:
                 raise ValueError("checkpoint source hash differs from the current implementation")
         self.backend.load_state_dict(payload["backend"])
         if not resume_training:
-            return
+            return dict(payload.get("extra_metadata", {}))
+        if "replay_buffer" not in payload:
+            raise ValueError(
+                "model-only checkpoint cannot resume training; load it with "
+                "resume_training=False or use a full-resume checkpoint"
+            )
         self.buffer.load_state_dict(payload["replay_buffer"])
         if "initial_state_buffer" in payload:
             self.initial_state_buffer.load_state_dict(payload["initial_state_buffer"])
@@ -563,3 +595,4 @@ class SafeRLTrainer:
         torch.set_rng_state(rng["torch_cpu"].cpu())
         if torch.cuda.is_available() and rng.get("torch_cuda") is not None:
             torch.cuda.set_rng_state_all([state.cpu() for state in rng["torch_cuda"]])
+        return dict(payload.get("extra_metadata", {}))

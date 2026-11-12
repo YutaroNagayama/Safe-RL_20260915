@@ -213,7 +213,9 @@ def test_four_face_banks_follow_main_layout(tmp_path):
     assert saw_repeated_entry and saw_adjacent_exit
 
 
-def test_notebook_grid_bounds_workers_and_recovers_missing_development(tmp_path, monkeypatch):
+def test_notebook_grid_bounds_workers_and_recovers_missing_development(tmp_path, monkeypatch, capsys):
+    from io import StringIO
+    from tqdm.std import tqdm
     from scripts import main_notebook_runner as launcher
 
     root, _ = small_settings(tmp_path)
@@ -230,10 +232,15 @@ def test_notebook_grid_bounds_workers_and_recovers_missing_development(tmp_path,
         return process
 
     monkeypatch.setattr(launcher.subprocess, 'Popen', record)
+    display = StringIO()
     completed = launcher.run_training_grid(repo, tmp_path/'settings.yaml', root,
-                                           target=3, workers=2, status_interval=300)
+                                           target=3, workers=2, status_interval=300,
+                                           progress_factory=lambda **kwargs: tqdm(file=display, **kwargs))
     assert set(completed) == {('A', 0), ('B', 0), ('F', 0)}
     assert peak == 2
+    assert 'A/0 warm-up / 準備中' in display.getvalue()
+    assert '3/3' in display.getvalue()
+    assert not capsys.readouterr().out
     model = root/'training/A/seed_000/model_3.pt'
     before = model.stat().st_mtime_ns
     evaluation = root/'evaluation/development/step_3/mean/A/seed_000/completed.json'

@@ -228,20 +228,16 @@ def test_notebook_device_probe_reports_training_and_evaluation_separately(tmp_pa
     assert list(tmp_path.iterdir()) == [settings]
 
 
-def test_notebook_progress_reads_latest_completed_episode(tmp_path):
-    from scripts.main_notebook_runner import _latest_progress
+def test_notebook_reports_collection_save_before_serializing(monkeypatch, tmp_path):
+    from scripts.main_notebook_worker import NotebookTrainer
 
-    metrics = tmp_path / 'metrics.jsonl'
-    cache = {}
-    assert _latest_progress(metrics, cache) == (0, 0)
-    metrics.write_text('{"cumulative_environment_steps":8420,"completed_episodes":26}\n')
-    assert _latest_progress(metrics, cache) == (8420, 26)
-    with metrics.open('a') as stream:
-        stream.write('{"cumulative_environment_steps":9012,')
-        stream.flush()
-        assert _latest_progress(metrics, cache) == (8420, 26)
-        stream.write('"completed_episodes":27}\n')
-    assert _latest_progress(metrics, cache) == (9012, 27)
+    trainer = NotebookTrainer.__new__(NotebookTrainer)
+    trainer.collection_goal = trainer.completed_episodes = 100
+    events = []
+    trainer.report_progress = lambda phase, **fields: events.append((phase, fields["checkpoint"]))
+    monkeypatch.setattr(SafeRLTrainer, 'save_checkpoint', lambda self, path: events.append(('save', path.name)))
+    trainer.save_checkpoint(tmp_path/'collection.pt')
+    assert events == [('saving_collection', 'collection.pt'), ('save', 'collection.pt')]
 
 
 def test_notebook_grid_bounds_workers_and_recovers_missing_development(tmp_path, monkeypatch, capsys):
@@ -250,6 +246,13 @@ def test_notebook_grid_bounds_workers_and_recovers_missing_development(tmp_path,
     from scripts import main_notebook_runner as launcher
 
     root, _ = small_settings(tmp_path)
+    old_run = root/'training/B/seed_000'
+    old_collection = old_run/'warmup/collection'
+    old_collection.mkdir(parents=True)
+    old_status = {'phase': 'collection', 'token': 'old-worker', 'steps': 987654, 'episodes': 2}
+    (old_run/'notebook_progress.json').write_text(json.dumps(old_status))
+    (old_collection/'metrics.jsonl').write_text(
+        '{"episode":1,"cumulative_environment_steps":987654,"completed_episodes":2}\n')
     repo = Path(__file__).resolve().parents[1]
     started = []
     peak = 0
@@ -279,12 +282,13 @@ def test_notebook_grid_bounds_workers_and_recovers_missing_development(tmp_path,
     assert len(bars) == 2
     for method in ('A', 'B', 'F'):
         assert f'{method}/0' in display.getvalue()
-    assert 'warm-up収集' in display.getvalue()
-    assert '0/2 ep, 0 step' in display.getvalue()
+    assert 'B/0 · 起動・保存点読込中' in display.getvalue()
+    assert '987,654' not in display.getvalue()
     assert 'development完了' in display.getvalue()
     assert '1/1 件' in display.getvalue()
-    updates = root/'training/A/seed_000/warmup/notebook_updates.json'
-    assert json.loads(updates.read_text()) == {'updates': 1}
+    status = json.loads((old_run/'notebook_progress.json').read_text())
+    assert status['token'] != old_status['token']
+    assert (status['phase'], status['steps'], status['episodes']) == ('online', 3, 1)
     assert not capsys.readouterr().out
     model = root/'training/A/seed_000/model_3.pt'
     before = model.stat().st_mtime_ns

@@ -7,10 +7,12 @@ from __future__ import annotations
 
 from collections import deque
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
 from time import monotonic, sleep
+from uuid import uuid4
 
 import yaml
 
@@ -57,30 +59,6 @@ def _read_json(path):
         return {}
 
 
-def _latest_progress(path, cache):
-    try:
-        info = path.stat()
-        signature = (info.st_size, info.st_mtime_ns)
-        if path in cache and cache[path][0] == signature:
-            return cache[path][1]
-        with path.open("rb") as stream:
-            stream.seek(0, 2)
-            offset = max(0, stream.tell() - 65536)
-            stream.seek(offset)
-            lines = stream.read().splitlines()
-        for line in reversed(lines[1:] if offset else lines):
-            try:
-                row = json.loads(line)
-                progress = row["cumulative_environment_steps"], row["completed_episodes"]
-            except (ValueError, KeyError):
-                continue
-            cache[path] = (signature, progress)
-            return progress
-    except FileNotFoundError:
-        pass
-    return 0, 0
-
-
 def run_training_grid(repo, settings, output, *, target=30000, workers=2, status_interval=30, progress_factory=None):
     """Train A/B/F for each configured seed with at most workers live children."""
     if not isinstance(workers, int) or workers < 1:
@@ -99,7 +77,7 @@ def run_training_grid(repo, settings, output, *, target=30000, workers=2, status
     active = {}
     finished = []
     failures = []
-    progress_cache = {}
+    live_status = {}
     bars = {}
     free_slots = deque(range(workers))
 
@@ -113,10 +91,25 @@ def run_training_grid(repo, settings, output, *, target=30000, workers=2, status
                       "mean" / method / f"seed_{seed:03d}" / "completed.json")
         return run, evaluation
 
-    def phase_progress(method, seed, phase):
+    def phase_progress(method, seed, phase, token):
         run, _ = paths(method, seed)
         if phase == "development完了":
             return "development完了", expected, expected, "件", ""
+        status = {}
+        if phase == "train":
+            observed = _read_json(run / "notebook_progress.json")
+            if observed.get("token") == token:
+                live_status[token] = observed
+            status = live_status.get(token, {})
+            worker_phase = status.get("phase")
+            if worker_phase == "collection":
+                return "warm-up収集", status["episodes"], warmup_episodes, "ep", f"{status['steps']:,} step"
+            if worker_phase == "cost":
+                return "Cost Critic warm-up", status["updates"], warmup_updates, "更新", ""
+            if worker_phase == "saving_collection":
+                return "収集保存・Cost Critic準備中", 0, 1, "", status.get("checkpoint", "")
+            if worker_phase != "online":
+                return "起動・保存点読込中", 0, 1, "", status.get("checkpoint", "")
         for point in milestones:
             _, evaluation = paths(method, seed, point)
             if (phase == "evaluate" and point == target) or (
@@ -124,32 +117,25 @@ def run_training_grid(repo, settings, output, *, target=30000, workers=2, status
             ):
                 cases = sum(1 for _ in (evaluation.parent / "cases").glob("*/completed.json"))
                 return "development", cases, expected, "件", f"{point:,} stepモデル"
-        if not (run / "latest.pt").exists():
-            warmup = run / "warmup"
-            updates = _read_json(warmup / "notebook_updates.json").get("updates")
-            if warmup_updates and (warmup / "audit.json").exists():
-                updates = warmup_updates
-            if updates is not None:
-                return "Cost Critic warm-up", updates, warmup_updates, "更新", ""
-            steps, episodes = _latest_progress(warmup / "collection" / "metrics.jsonl", progress_cache)
-            return "warm-up収集", episodes, warmup_episodes, "ep", f"{steps:,} step"
-        steps, episodes = _latest_progress(run / "online" / "metrics.jsonl", progress_cache)
+        steps, episodes = status["steps"], status["episodes"]
         detail = f"ep {episodes:,}"
         if steps > target:
             detail += f" · 実績 {steps:,} step"
         return "online学習", steps, target, "step", detail
 
-    def show_progress(method, seed, phase, slot):
-        label, count, total, unit, detail = phase_progress(method, seed, phase)
+    def show_progress(method, seed, phase, slot, token):
+        label, count, total, unit, detail = phase_progress(method, seed, phase, token)
         description = f"{method}/{seed} · {label}"
         if slot not in bars:
-            report(f"進捗 {description} {count:,}/{total:,} {unit} {detail}".rstrip())
+            numbers = f" {count:,}/{total:,} {unit}" if unit else ""
+            report(f"進捗 {description}{numbers} {detail}".rstrip())
             return
         bar = bars[slot]
         current = min(count, total)
         if description != bar.desc or total != bar.total or unit != bar.unit or current < bar.n:
             bar.set_description_str(description, refresh=False)
             bar.unit = unit
+            bar.bar_format = "{desc} {bar} {n:,}/{total:,} {unit}{postfix}" if unit else "{desc} {bar}{postfix}"
             bar.set_postfix_str(detail, refresh=False)
             bar.reset(total=total)
         if current != bar.n or detail != bar.postfix:
@@ -186,14 +172,16 @@ def run_training_grid(repo, settings, output, *, target=30000, workers=2, status
                 "--target", str(target)]
         if phase == "evaluate":
             args += ["--split", "development"]
+        token = uuid4().hex
         with log.open("ab") as stream:
-            process = subprocess.Popen(args, cwd=repo, stdout=stream, stderr=subprocess.STDOUT)
+            process = subprocess.Popen(args, cwd=repo, stdout=stream, stderr=subprocess.STDOUT,
+                                       env={**os.environ, "UAV_MAIN_NOTEBOOK_PROGRESS_TOKEN": token})
         slot = free_slots.popleft()
-        active[process] = (method, seed, phase, log, slot)
+        active[process] = (method, seed, phase, log, slot, token)
         if progress_factory is not None and slot not in bars:
             bars[slot] = progress_factory(
-                total=target, desc=f"{method}/{seed}", position=slot,
-                bar_format="{desc} {bar} {n:,}/{total:,} {unit}{postfix}",
+                total=1, desc=f"{method}/{seed}", position=slot, unit="",
+                bar_format="{desc} {bar}{postfix}",
             )
         report(f"開始 {method}/{seed} {phase} → {log}")
 
@@ -212,11 +200,12 @@ def run_training_grid(repo, settings, output, *, target=30000, workers=2, status
                     failures.append(f"{method}/{seed}: latest.pt がありません")
                     break
                 launch(method, seed, phase)
-            for process, (method, seed, phase, log, slot) in list(active.items()):
+            for process, (method, seed, phase, log, slot, token) in list(active.items()):
                 status = process.poll()
                 if status is None:
                     continue
                 del active[process]
+                live_status.pop(token, None)
                 free_slots.append(slot)
                 if status:
                     failures.append(f"{method}/{seed} {phase}: exit {status} ({log})")
@@ -224,7 +213,7 @@ def run_training_grid(repo, settings, output, *, target=30000, workers=2, status
                 elif done(method, seed):
                     finished.append((method, seed))
                     if slot in bars:
-                        show_progress(method, seed, "development完了", slot)
+                        show_progress(method, seed, "development完了", slot, token)
                     report(f"完了 {method}/{seed}: 学習・development保存済み")
                 elif phase == "train":
                     # A resumed train can skip the milestone's evaluation.
@@ -235,8 +224,8 @@ def run_training_grid(repo, settings, output, *, target=30000, workers=2, status
                 raise RuntimeError("\n".join(failures))
             due = monotonic() >= next_status
             if progress_factory is not None or due:
-                for method, seed, phase, _, slot in active.values():
-                    show_progress(method, seed, phase, slot)
+                for method, seed, phase, _, slot, token in active.values():
+                    show_progress(method, seed, phase, slot, token)
             if due:
                 next_status = monotonic() + status_interval
             if active:

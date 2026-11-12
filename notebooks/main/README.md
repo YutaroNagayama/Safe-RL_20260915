@@ -27,6 +27,8 @@ python -m uav_safe_marl.experiments.main analyze --root results/main_four_faces_
 
 確率評価はA/B/Fだけで、各Criticと同じHOCBF ON・同じ初期sample actionを使います。rolloutは1件ずつ保存し、完了済みはidentityを確認して再利用します。未完了分だけ同じ乱数キーで再実行します。設定の`evaluation_workers`を増やすとscenario単位で並列化し、workerごとにモデルを1回だけ読み込みます。初期値1は確実な直列動作のためで、本番機で計測して固定してください。
 
+再開時は、今回のworkerが保存点を読み込んでから進捗値を表示します。読込中は `起動・保存点読込中`、収集が済んで保存やCost Criticの準備をしている間は `収集保存・Cost Critic準備中` と表示します。
+
 ## Windowsで学習の同時実行数を測る
 
 リポジトリ直下で、CUDA対応のPyTorchを入れた仮想環境から実行します。

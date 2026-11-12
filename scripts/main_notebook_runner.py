@@ -57,7 +57,7 @@ def _read_json(path):
         return {}
 
 
-def _latest_progress(path, target, cache):
+def _latest_progress(path, cache):
     try:
         info = path.stat()
         signature = (info.st_size, info.st_mtime_ns)
@@ -71,14 +71,14 @@ def _latest_progress(path, target, cache):
         for line in reversed(lines[1:] if offset else lines):
             try:
                 row = json.loads(line)
-                progress = f"{row['cumulative_environment_steps']:,}/{target:,} step (ep {row['completed_episodes']:,})"
+                progress = row["cumulative_environment_steps"], row["completed_episodes"]
             except (ValueError, KeyError):
                 continue
             cache[path] = (signature, progress)
             return progress
     except FileNotFoundError:
         pass
-    return "warm-up / 準備中"
+    return 0, 0
 
 
 def run_training_grid(repo, settings, output, *, target=30000, workers=2, status_interval=30, progress_factory=None):
@@ -96,14 +96,11 @@ def run_training_grid(repo, settings, output, *, target=30000, workers=2, status
     finished = []
     failures = []
     progress_cache = {}
-    displayed_statuses = []
-    progress_bar = (
-        progress_factory(total=len(pending), desc="学習・development", unit="run")
-        if progress_factory is not None else None
-    )
+    bars = {}
+    free_slots = deque(range(workers))
 
     def report(message):
-        if progress_bar is None:
+        if progress_factory is None:
             print(message, flush=True)
 
     def paths(method, seed):
@@ -111,6 +108,31 @@ def run_training_grid(repo, settings, output, *, target=30000, workers=2, status
         evaluation = (output / "evaluation" / "development" / f"step_{target}" /
                       "mean" / method / f"seed_{seed:03d}" / "completed.json")
         return run, evaluation
+
+    def show_progress(method, seed, phase, slot):
+        run, _ = paths(method, seed)
+        steps, episodes = _latest_progress(run / "online" / "metrics.jsonl", progress_cache)
+        detail = f"ep {episodes:,}"
+        if phase == "train" and episodes == 0:
+            detail += " · warm-up / 準備中"
+        elif phase == "evaluate" or (phase == "train" and (run / f"model_{target}.pt").exists()):
+            detail += " · development"
+        elif phase != "train":
+            detail += f" · {phase}"
+        if steps > target:
+            detail += f" · 実績 {steps:,} step"
+        if slot not in bars:
+            report(f"進捗 {method}/{seed} {steps:,}/{target:,} step ({detail})")
+            return
+        bar = bars[slot]
+        current = min(steps, target)
+        if current != bar.n or detail != bar.postfix:
+            bar.set_postfix_str(detail, refresh=False)
+            if current < bar.n:  # A resumed worker can truncate an unsaved episode.
+                bar.reset()
+            if current != bar.n:
+                bar.update(current - bar.n)
+            bar.refresh()
 
     def done(method, seed):
         run, evaluation = paths(method, seed)
@@ -141,7 +163,20 @@ def run_training_grid(repo, settings, output, *, target=30000, workers=2, status
             args += ["--split", "development"]
         with log.open("ab") as stream:
             process = subprocess.Popen(args, cwd=repo, stdout=stream, stderr=subprocess.STDOUT)
-        active[process] = (method, seed, phase, log)
+        slot = free_slots.popleft()
+        active[process] = (method, seed, phase, log, slot)
+        if progress_factory is not None:
+            label = f"{method}/{seed}"
+            if slot in bars:
+                bar = bars[slot]
+                bar.set_description_str(label, refresh=False)
+                bar.set_postfix_str("", refresh=False)
+                bar.reset()
+            else:
+                bars[slot] = progress_factory(
+                    total=target, desc=label, position=slot,
+                    bar_format="{desc} {bar} {n:,}/{total:,} step{postfix}",
+                )
         report(f"開始 {method}/{seed} {phase} → {log}")
 
     next_status = monotonic() + status_interval
@@ -159,16 +194,19 @@ def run_training_grid(repo, settings, output, *, target=30000, workers=2, status
                     failures.append(f"{method}/{seed}: latest.pt がありません")
                     break
                 launch(method, seed, phase)
-            for process, (method, seed, phase, log) in list(active.items()):
+            for process, (method, seed, phase, log, slot) in list(active.items()):
                 status = process.poll()
                 if status is None:
                     continue
                 del active[process]
+                free_slots.append(slot)
                 if status:
                     failures.append(f"{method}/{seed} {phase}: exit {status} ({log})")
                     print(f"失敗: {failures[-1]}。新規起動を止め、実行中の組の終了を待ちます。", flush=True)
                 elif done(method, seed):
                     finished.append((method, seed))
+                    if slot in bars:
+                        show_progress(method, seed, "development完了", slot)
                     report(f"完了 {method}/{seed}: 学習・development保存済み")
                 elif phase == "train":
                     # A resumed train can skip the milestone's evaluation.
@@ -178,23 +216,11 @@ def run_training_grid(repo, settings, output, *, target=30000, workers=2, status
             if failures and not active:
                 raise RuntimeError("\n".join(failures))
             due = monotonic() >= next_status
-            if progress_bar is not None or due:
-                statuses = []
-                for method, seed, phase, _ in active.values():
-                    run, _ = paths(method, seed)
-                    detail = _latest_progress(run / "online" / "metrics.jsonl", target, progress_cache)
-                    if phase == "evaluate" or (run / f"model_{target}.pt").exists():
-                        detail = f"{detail} · development"
-                    statuses.append(f"{method}/{seed} {detail}")
-                if progress_bar is None:
-                    for status in statuses:
-                        print(f"進捗 {status}", flush=True)
-                    next_status = monotonic() + status_interval
-                elif statuses != displayed_statuses or len(finished) != progress_bar.n:
-                    progress_bar.set_postfix_str(" | ".join(statuses), refresh=False)
-                    progress_bar.update(len(finished) - progress_bar.n)
-                    progress_bar.refresh()
-                    displayed_statuses = statuses
+            if progress_factory is not None or due:
+                for method, seed, phase, _, slot in active.values():
+                    show_progress(method, seed, phase, slot)
+            if due:
+                next_status = monotonic() + status_interval
             if active:
                 sleep(0.5)
     finally:
@@ -204,6 +230,6 @@ def run_training_grid(repo, settings, output, *, target=30000, workers=2, status
                 process.terminate()
         for process in active:
             process.wait()
-        if progress_bar is not None:
-            progress_bar.close()
+        for bar in bars.values():
+            bar.close()
     return finished

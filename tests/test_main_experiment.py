@@ -233,15 +233,15 @@ def test_notebook_progress_reads_latest_completed_episode(tmp_path):
 
     metrics = tmp_path / 'metrics.jsonl'
     cache = {}
-    assert _latest_progress(metrics, 30000, cache) == 'warm-up / 準備中'
+    assert _latest_progress(metrics, cache) == (0, 0)
     metrics.write_text('{"cumulative_environment_steps":8420,"completed_episodes":26}\n')
-    assert _latest_progress(metrics, 30000, cache) == '8,420/30,000 step (ep 26)'
+    assert _latest_progress(metrics, cache) == (8420, 26)
     with metrics.open('a') as stream:
         stream.write('{"cumulative_environment_steps":9012,')
         stream.flush()
-        assert _latest_progress(metrics, 30000, cache) == '8,420/30,000 step (ep 26)'
+        assert _latest_progress(metrics, cache) == (8420, 26)
         stream.write('"completed_episodes":27}\n')
-    assert _latest_progress(metrics, 30000, cache) == '9,012/30,000 step (ep 27)'
+    assert _latest_progress(metrics, cache) == (9012, 27)
 
 
 def test_notebook_grid_bounds_workers_and_recovers_missing_development(tmp_path, monkeypatch, capsys):
@@ -264,13 +264,23 @@ def test_notebook_grid_bounds_workers_and_recovers_missing_development(tmp_path,
 
     monkeypatch.setattr(launcher.subprocess, 'Popen', record)
     display = StringIO()
+    bars = []
+
+    def make_bar(**kwargs):
+        bar = tqdm(file=display, **kwargs)
+        bars.append(bar)
+        return bar
+
     completed = launcher.run_training_grid(repo, tmp_path/'settings.yaml', root,
                                            target=3, workers=2, status_interval=300,
-                                           progress_factory=lambda **kwargs: tqdm(file=display, **kwargs))
+                                           progress_factory=make_bar)
     assert set(completed) == {('A', 0), ('B', 0), ('F', 0)}
     assert peak == 2
-    assert 'A/0 warm-up / 準備中' in display.getvalue()
-    assert '3/3' in display.getvalue()
+    assert len(bars) == 2
+    for method in ('A', 'B', 'F'):
+        assert f'{method}/0' in display.getvalue()
+    assert '0/3 step, ep 0 · warm-up / 準備中' in display.getvalue()
+    assert '3/3 step, ep 1 · development完了' in display.getvalue()
     assert not capsys.readouterr().out
     model = root/'training/A/seed_000/model_3.pt'
     before = model.stat().st_mtime_ns

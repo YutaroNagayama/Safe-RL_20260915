@@ -92,6 +92,38 @@ def test_n_step_sampling_respects_episode_edges_and_timeout_bootstrap():
     assert rows[11] == (8.0, 1, 1.0, 12)
 
 
+def test_n_step_sampling_excludes_only_the_incomplete_newest_suffix():
+    buffer = NumpyReplayBuffer(16, seed=2)
+    for index in range(7):
+        value = np.full((1, 3), float(index))
+        buffer.add(Transition(
+            state=value,
+            nominal_action=np.zeros((1, 3)),
+            safe_action=np.zeros((1, 3)),
+            reward=0.0,
+            cost=1.0,
+            next_state=value + 1.0,
+            terminated=index == 2,
+            held_residual_action=np.zeros((1, 3)),
+            next_held_residual_action=np.zeros((1, 3)),
+        ))
+    # Starts 0..2 terminate at the episode edge, and starts 3..4 have a full
+    # three-step window.  Starts 5..6 are the only incomplete windows.
+    assert buffer._n_step_candidate_count(3) == 5
+    batch = buffer.sample_n_step(5, n_step=3, gamma=1.0)
+    assert sorted(batch["state"][:, 0, 0].tolist()) == [0.0, 1.0, 2.0, 3.0, 4.0]
+
+
+def test_replay_freezes_float_inputs_as_float32_without_changing_values():
+    buffer = NumpyReplayBuffer(1, seed=0, storage_dtype=np.float32)
+    state = np.array([[1.25, -2.5, 3.75]], dtype=np.float64)
+    buffer.add(Transition(state, state, state, 0.0, 0.0, state, True))
+    stored = buffer._at(0)
+    assert stored.state.dtype == np.float32
+    assert stored.nominal_action.dtype == np.float32
+    np.testing.assert_array_equal(stored.state, state.astype(np.float32))
+
+
 def test_initial_state_buffer_samples_the_configured_mu_and_restores_state():
     buffer = InitialStateBuffer(8, seed=3)
     buffer.add(np.full((4, 2), 2.0), 2, "n2")

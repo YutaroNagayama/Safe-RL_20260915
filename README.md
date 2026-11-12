@@ -1,5 +1,9 @@
 # UAV P2P Safe-MARL
 
+## Main実験
+
+段階実行のmainは[専用Notebook](notebooks/main/main_experiment.ipynb)と[実行説明](notebooks/main/README.md)を使います。A/B/Fを学習し、C/DはA/Bの同じcheckpointでHOCBF OFF評価します。各3seed・30kで止めてdevelopmentで判断し、必要なら全9 runを状態を保持して60kまで延長します。以下のWindows Bookは既存条件用として保持しています。
+
 ## Windows本番実験
 
 Windows + GeForce RTX上の手動実験は、[Windows実験Book](notebooks/windows/README.md)を使用します。共通scenario生成とResidual Actor方式群の学習・固定bank評価が別Notebookになっており、全成果物は `results/result_番号_日付/方式名/` に保存されます。

@@ -206,6 +206,9 @@ def save_evaluation(result: dict[str, Any], output_dir: str | Path) -> Path:
         path = rollout_dir / filename
         np.savez_compressed(
             path,
+            safety_diagnostics_json=np.asarray([json.dumps(_jsonable(item)) for item in rollout.get("safety_diagnostics", [])]),
+            safety_wall_times=np.asarray(rollout.get("safety_wall_times", [])),
+            evaluation_tick_times=np.asarray(rollout.get("evaluation_tick_times", [])),
             positions=rollout["positions"],
             velocities=rollout["velocities"],
             active_masks=rollout["active_masks"],

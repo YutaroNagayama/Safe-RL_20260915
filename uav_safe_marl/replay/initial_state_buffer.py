@@ -75,7 +75,7 @@ class InitialStateBuffer:
             probabilities /= probabilities.sum()
         sampled_n = self._rng.choice(counts, size=batch_size, replace=True, p=probabilities)
         selected = [
-            self._records[int(self._rng.choice(indices_by_n[int(count)]))]
+            self._records[indices_by_n[int(count)][int(self._rng.choice(len(indices_by_n[int(count)])))]]
             for count in sampled_n
         ]
         graph_mode = isinstance(selected[0].observation, dict)

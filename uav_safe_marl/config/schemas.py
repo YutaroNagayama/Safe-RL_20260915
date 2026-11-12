@@ -54,6 +54,8 @@ class CommunicationConfig:
     information_mode: str = "prior_share"
     actor_period_k: int = 5
     delay_steps: int = 1
+    # None preserves legacy experiments, whose reactive radius equals d_eng.
+    reactive_radius: float | None = None
 
 
 @dataclass(slots=True)
@@ -275,6 +277,8 @@ class ExperimentConfig:
             raise ValueError("interaction screening threshold must exceed d_eng")
         if self.communication.delay_steps < 0:
             raise ValueError("communication delay must be non-negative")
+        if self.communication.reactive_radius is not None and self.communication.reactive_radius <= 0:
+            raise ValueError("reactive_radius must be positive")
         if self.policy.entropy_alpha_initial <= 0:
             raise ValueError("entropy_alpha_initial must be positive")
         if self.policy.alpha_learning_rate <= 0:

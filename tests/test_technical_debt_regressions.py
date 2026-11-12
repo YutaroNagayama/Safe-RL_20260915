@@ -3,6 +3,7 @@ from __future__ import annotations
 import random
 
 import numpy as np
+import pytest
 import torch
 
 from uav_safe_marl import build_env, load_config
@@ -80,6 +81,22 @@ def test_checkpoint_restores_replay_cursor_and_rng(tmp_path):
     assert restored.scenario_bank_cursor == trainer.scenario_bank_cursor
     assert restored.total_environment_steps == trainer.total_environment_steps
     assert (random.random(), np.random.random(), float(torch.rand(()))) == expected
+
+
+def test_model_only_checkpoint_loads_for_evaluation_but_rejects_resume(tmp_path):
+    trainer = _trainer(tmp_path / "first", environment={"max_steps": 1})
+    trainer.train(1)
+    checkpoint = tmp_path / "model_only.pt"
+    trainer.save_checkpoint(checkpoint, include_replay=False)
+    payload = torch.load(checkpoint, map_location="cpu", weights_only=False)
+    assert payload["checkpoint_kind"] == "model_only"
+    assert "replay_buffer" not in payload
+
+    evaluator = _trainer(tmp_path / "evaluation", environment={"max_steps": 1})
+    evaluator.load_checkpoint(checkpoint, resume_training=False)
+    resumed = _trainer(tmp_path / "resume", environment={"max_steps": 1})
+    with pytest.raises(ValueError, match="model-only checkpoint"):
+        resumed.load_checkpoint(checkpoint, resume_training=True)
 
 
 def test_descriptor_uses_supplied_distance_thresholds():

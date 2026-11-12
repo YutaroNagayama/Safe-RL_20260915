@@ -59,14 +59,12 @@ def build_actor_graph(
             if not 0 <= sender_id < count or sender_id == receiver_id or not active[sender_id]:
                 continue
             delayed = np.asarray(message.embedding[:embedding_dim], dtype=np.float64)
-            delayed = np.pad(delayed, (0, embedding_dim - delayed.size))
             adjacency[receiver_id, sender_id] = True
-            edge_features[receiver_id, sender_id] = np.concatenate((
-                message.position - receiver.position,
-                message.velocity - receiver.velocity,
-                [float(message.age_steps)],
-                delayed,
-            ))
+            row = edge_features[receiver_id, sender_id]
+            row[:3] = message.position - receiver.position
+            row[3:6] = message.velocity - receiver.velocity
+            row[6] = float(message.age_steps)
+            row[EDGE_DIRECT_WIDTH:EDGE_DIRECT_WIDTH + delayed.size] = delayed
     return {
         "node_features": direct_node_features(states, active, reference_actions),
         "adjacency": adjacency,
@@ -83,9 +81,11 @@ def stack_graph_observations(observations: Sequence[GraphObservation], maximum: 
     maximum = maximum or max(item["node_features"].shape[0] for item in observations)
     node_width = observations[0]["node_features"].shape[-1]
     edge_width = observations[0]["edge_features"].shape[-1]
-    nodes = np.zeros((batch, maximum, node_width), dtype=np.float64)
+    dtype = np.result_type(*[item["node_features"].dtype for item in observations])
+    edge_dtype = np.result_type(*[item["edge_features"].dtype for item in observations])
+    nodes = np.zeros((batch, maximum, node_width), dtype=dtype)
     adjacency = np.zeros((batch, maximum, maximum), dtype=bool)
-    edges = np.zeros((batch, maximum, maximum, edge_width), dtype=np.float64)
+    edges = np.zeros((batch, maximum, maximum, edge_width), dtype=edge_dtype)
     mask = np.zeros((batch, maximum), dtype=bool)
     for index, graph in enumerate(observations):
         count = graph["node_features"].shape[0]

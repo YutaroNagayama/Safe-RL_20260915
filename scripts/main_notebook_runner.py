@@ -90,8 +90,12 @@ def run_training_grid(repo, settings, output, *, target=30000, workers=2, status
 
     repo, output = Path(repo).resolve(), Path(output).resolve()
     manifest = prepare(Path(settings), output)
+    settings = manifest["settings"]
     expected = len(manifest["development_ids"])
-    pending = deque((m, s, "train") for s in manifest["settings"]["training_seeds"] for m in TRAINED)
+    warmup_episodes = settings["banks"]["warmup"]["per_n"] * len(settings["agent_counts"])
+    warmup_updates = settings["cost_warmup_updates"]
+    milestones = sorted({target, *(point for point in settings["checkpoint_steps"] if point < target)})
+    pending = deque((m, s, "train") for s in settings["training_seeds"] for m in TRAINED)
     active = {}
     finished = []
     failures = []
@@ -103,33 +107,53 @@ def run_training_grid(repo, settings, output, *, target=30000, workers=2, status
         if progress_factory is None:
             print(message, flush=True)
 
-    def paths(method, seed):
+    def paths(method, seed, point=target):
         run = output / "training" / method / f"seed_{seed:03d}"
-        evaluation = (output / "evaluation" / "development" / f"step_{target}" /
+        evaluation = (output / "evaluation" / "development" / f"step_{point}" /
                       "mean" / method / f"seed_{seed:03d}" / "completed.json")
         return run, evaluation
 
-    def show_progress(method, seed, phase, slot):
+    def phase_progress(method, seed, phase):
         run, _ = paths(method, seed)
+        if phase == "development完了":
+            return "development完了", expected, expected, "件", ""
+        for point in milestones:
+            _, evaluation = paths(method, seed, point)
+            if (phase == "evaluate" and point == target) or (
+                (run / f"model_{point}.pt").exists() and not evaluation.exists()
+            ):
+                cases = sum(1 for _ in (evaluation.parent / "cases").glob("*/completed.json"))
+                return "development", cases, expected, "件", f"{point:,} stepモデル"
+        if not (run / "latest.pt").exists():
+            warmup = run / "warmup"
+            updates = _read_json(warmup / "notebook_updates.json").get("updates")
+            if warmup_updates and (warmup / "audit.json").exists():
+                updates = warmup_updates
+            if updates is not None:
+                return "Cost Critic warm-up", updates, warmup_updates, "更新", ""
+            steps, episodes = _latest_progress(warmup / "collection" / "metrics.jsonl", progress_cache)
+            return "warm-up収集", episodes, warmup_episodes, "ep", f"{steps:,} step"
         steps, episodes = _latest_progress(run / "online" / "metrics.jsonl", progress_cache)
         detail = f"ep {episodes:,}"
-        if phase == "train" and episodes == 0:
-            detail += " · warm-up / 準備中"
-        elif phase == "evaluate" or (phase == "train" and (run / f"model_{target}.pt").exists()):
-            detail += " · development"
-        elif phase != "train":
-            detail += f" · {phase}"
         if steps > target:
             detail += f" · 実績 {steps:,} step"
+        return "online学習", steps, target, "step", detail
+
+    def show_progress(method, seed, phase, slot):
+        label, count, total, unit, detail = phase_progress(method, seed, phase)
+        description = f"{method}/{seed} · {label}"
         if slot not in bars:
-            report(f"進捗 {method}/{seed} {steps:,}/{target:,} step ({detail})")
+            report(f"進捗 {description} {count:,}/{total:,} {unit} {detail}".rstrip())
             return
         bar = bars[slot]
-        current = min(steps, target)
+        current = min(count, total)
+        if description != bar.desc or total != bar.total or unit != bar.unit or current < bar.n:
+            bar.set_description_str(description, refresh=False)
+            bar.unit = unit
+            bar.set_postfix_str(detail, refresh=False)
+            bar.reset(total=total)
         if current != bar.n or detail != bar.postfix:
             bar.set_postfix_str(detail, refresh=False)
-            if current < bar.n:  # A resumed worker can truncate an unsaved episode.
-                bar.reset()
             if current != bar.n:
                 bar.update(current - bar.n)
             bar.refresh()
@@ -156,7 +180,8 @@ def run_training_grid(repo, settings, output, *, target=30000, workers=2, status
     def launch(method, seed, phase):
         log = output / "launcher_logs" / f"{method}_seed{seed:03d}_{target}_{phase}.log"
         log.parent.mkdir(parents=True, exist_ok=True)
-        args = [sys.executable, "-u", "-m", "uav_safe_marl.experiments.main",
+        module = "scripts.main_notebook_worker" if phase == "train" else "uav_safe_marl.experiments.main"
+        args = [sys.executable, "-u", "-m", module,
                 phase, "--root", str(output), "--method", method, "--seed", str(seed),
                 "--target", str(target)]
         if phase == "evaluate":
@@ -165,18 +190,11 @@ def run_training_grid(repo, settings, output, *, target=30000, workers=2, status
             process = subprocess.Popen(args, cwd=repo, stdout=stream, stderr=subprocess.STDOUT)
         slot = free_slots.popleft()
         active[process] = (method, seed, phase, log, slot)
-        if progress_factory is not None:
-            label = f"{method}/{seed}"
-            if slot in bars:
-                bar = bars[slot]
-                bar.set_description_str(label, refresh=False)
-                bar.set_postfix_str("", refresh=False)
-                bar.reset()
-            else:
-                bars[slot] = progress_factory(
-                    total=target, desc=label, position=slot,
-                    bar_format="{desc} {bar} {n:,}/{total:,} step{postfix}",
-                )
+        if progress_factory is not None and slot not in bars:
+            bars[slot] = progress_factory(
+                total=target, desc=f"{method}/{seed}", position=slot,
+                bar_format="{desc} {bar} {n:,}/{total:,} {unit}{postfix}",
+            )
         report(f"開始 {method}/{seed} {phase} → {log}")
 
     next_status = monotonic() + status_interval

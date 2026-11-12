@@ -279,8 +279,12 @@ def test_notebook_grid_bounds_workers_and_recovers_missing_development(tmp_path,
     assert len(bars) == 2
     for method in ('A', 'B', 'F'):
         assert f'{method}/0' in display.getvalue()
-    assert '0/3 step, ep 0 · warm-up / 準備中' in display.getvalue()
-    assert '3/3 step, ep 1 · development完了' in display.getvalue()
+    assert 'warm-up収集' in display.getvalue()
+    assert '0/2 ep, 0 step' in display.getvalue()
+    assert 'development完了' in display.getvalue()
+    assert '1/1 件' in display.getvalue()
+    updates = root/'training/A/seed_000/warmup/notebook_updates.json'
+    assert json.loads(updates.read_text()) == {'updates': 1}
     assert not capsys.readouterr().out
     model = root/'training/A/seed_000/model_3.pt'
     before = model.stat().st_mtime_ns

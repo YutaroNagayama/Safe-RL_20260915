@@ -213,6 +213,22 @@ def test_four_face_banks_follow_main_layout(tmp_path):
     assert saw_repeated_entry and saw_adjacent_exit
 
 
+def test_notebook_progress_reads_latest_completed_episode(tmp_path):
+    from scripts.main_notebook_runner import _latest_progress
+
+    metrics = tmp_path / 'metrics.jsonl'
+    cache = {}
+    assert _latest_progress(metrics, 30000, cache) == 'warm-up / 準備中'
+    metrics.write_text('{"cumulative_environment_steps":8420,"completed_episodes":26}\n')
+    assert _latest_progress(metrics, 30000, cache) == '8,420/30,000 step (ep 26)'
+    with metrics.open('a') as stream:
+        stream.write('{"cumulative_environment_steps":9012,')
+        stream.flush()
+        assert _latest_progress(metrics, 30000, cache) == '8,420/30,000 step (ep 26)'
+        stream.write('"completed_episodes":27}\n')
+    assert _latest_progress(metrics, 30000, cache) == '9,012/30,000 step (ep 27)'
+
+
 def test_notebook_grid_bounds_workers_and_recovers_missing_development(tmp_path, monkeypatch, capsys):
     from io import StringIO
     from tqdm.std import tqdm

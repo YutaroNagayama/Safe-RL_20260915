@@ -22,8 +22,12 @@ def _read_json(path):
         return {}
 
 
-def _latest_progress(path):
+def _latest_progress(path, target, cache):
     try:
+        info = path.stat()
+        signature = (info.st_size, info.st_mtime_ns)
+        if path in cache and cache[path][0] == signature:
+            return cache[path][1]
         with path.open("rb") as stream:
             stream.seek(0, 2)
             offset = max(0, stream.tell() - 65536)
@@ -32,13 +36,11 @@ def _latest_progress(path):
         for line in reversed(lines[1:] if offset else lines):
             try:
                 row = json.loads(line)
-                return (
-                    f"{row['cumulative_environment_steps']:,} step, "
-                    f"N={row['actual_agent_count']}, "
-                    f"Cost={row['discounted_episode_cost']:.3g}"
-                )
+                progress = f"{row['cumulative_environment_steps']:,}/{target:,} step (ep {row['completed_episodes']:,})"
             except (ValueError, KeyError):
                 continue
+            cache[path] = (signature, progress)
+            return progress
     except FileNotFoundError:
         pass
     return "warm-up / 準備中"
@@ -58,6 +60,8 @@ def run_training_grid(repo, settings, output, *, target=30000, workers=2, status
     active = {}
     finished = []
     failures = []
+    progress_cache = {}
+    displayed_statuses = []
     progress_bar = (
         progress_factory(total=len(pending), desc="学習・development", unit="run")
         if progress_factory is not None else None
@@ -108,27 +112,23 @@ def run_training_grid(repo, settings, output, *, target=30000, workers=2, status
     next_status = monotonic() + status_interval
     try:
         while pending or active:
-            changed = False
             while pending and len(active) < workers and not failures:
                 method, seed, phase = pending.popleft()
                 run, _ = paths(method, seed)
                 if phase == "train" and done(method, seed):
                     finished.append((method, seed))
                     report(f"完了済み {method}/{seed} を再利用")
-                    changed = True
                     continue
                 # Don't silently restart an existing stage without its full state.
                 if phase == "train" and not (run / "latest.pt").exists() and any(run.glob("stage_*.json")):
                     failures.append(f"{method}/{seed}: latest.pt がありません")
                     break
                 launch(method, seed, phase)
-                changed = True
             for process, (method, seed, phase, log) in list(active.items()):
                 status = process.poll()
                 if status is None:
                     continue
                 del active[process]
-                changed = True
                 if status:
                     failures.append(f"{method}/{seed} {phase}: exit {status} ({log})")
                     print(f"失敗: {failures[-1]}。新規起動を止め、実行中の組の終了を待ちます。", flush=True)
@@ -143,23 +143,23 @@ def run_training_grid(repo, settings, output, *, target=30000, workers=2, status
             if failures and not active:
                 raise RuntimeError("\n".join(failures))
             due = monotonic() >= next_status
-            if due or (progress_bar is not None and changed):
+            if progress_bar is not None or due:
                 statuses = []
                 for method, seed, phase, _ in active.values():
                     run, _ = paths(method, seed)
+                    detail = _latest_progress(run / "online" / "metrics.jsonl", target, progress_cache)
                     if phase == "evaluate" or (run / f"model_{target}.pt").exists():
-                        detail = "development"
-                    else:
-                        detail = _latest_progress(run / "online" / "metrics.jsonl")
+                        detail = f"{detail} · development"
                     statuses.append(f"{method}/{seed} {detail}")
-                if progress_bar is not None:
+                if progress_bar is None:
+                    for status in statuses:
+                        print(f"進捗 {status}", flush=True)
+                    next_status = monotonic() + status_interval
+                elif statuses != displayed_statuses or len(finished) != progress_bar.n:
                     progress_bar.set_postfix_str(" | ".join(statuses), refresh=False)
                     progress_bar.update(len(finished) - progress_bar.n)
                     progress_bar.refresh()
-                else:
-                    for status in statuses:
-                        print(f"進捗 {status}", flush=True)
-                next_status = monotonic() + status_interval
+                    displayed_statuses = statuses
             if active:
                 sleep(0.5)
     finally:

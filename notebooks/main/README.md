@@ -11,7 +11,7 @@ python -m uav_safe_marl.experiments.main prepare --root results/main_four_faces_
 python -m uav_safe_marl.experiments.main train --root results/main_four_faces_free_30m --method A --seed 0
 ```
 
-Notebookはtqdmのバー1本に学習・developmentの完了run数を表示します。バーの横には実行中の各runの最新episode指標や段階が出て、約30秒ごとに更新されます。詳細なプロセス出力は `launcher_logs/` に保存します。同じ出力先で別のNotebookやPowerShellから重複起動しないでください。セルを中断した場合は子プロセスも停止し、次回は直近の保存点から再開します。再実行時は学習・developmentが完了済みの組を再利用し、保存済みモデルのdevelopmentが欠けている場合は補います。60kへ延長するときは同じ出力先で `TARGET = 60000` に変更します。decision評価・確率校正・集計はそれぞれのセルで有効にします。
+Notebookはtqdmのバー1本に学習・developmentの完了run数を表示します。バーの横には実行中の各runの累積online step・目標step・完了episode数が出ます。episodeログを約0.5秒おきに確認し、表示が変わったときだけバーを更新します。warm-upとdevelopmentの段階も表示します。詳細なプロセス出力は `launcher_logs/` に保存します。同じ出力先で別のNotebookやPowerShellから重複起動しないでください。セルを中断した場合は子プロセスも停止し、次回は直近の保存点から再開します。再実行時は学習・developmentが完了済みの組を再利用し、保存済みモデルのdevelopmentが欠けている場合は補います。60kへ延長するときは同じ出力先で `TARGET = 60000` に変更します。decision評価・確率校正・集計はそれぞれのセルで有効にします。
 
 各seedでA/B/Fをそろえ、初回は全9 runを30k到達後のepisode終端で止めます。固定developmentとN別学習曲線で、方式差の方向がseedをまたいで揃うか、終盤の指標がまだ動いているかを確認します。30kで判断できれば同時点のモデルをdecisionで比較し、不足なら全9 runを累積60kへ延長します。確認Testは凍結まで温存します。warm-up収集・Cost-only更新、30k（延長時のみ60k）保存と別モデルによるdevelopment評価は自動です。中断したら同じtrain呼出しで再開します。warm-upは収集終了と500更新ごと、onlineは従来のepisode間隔と段階終了でfull checkpointを保存します。
 

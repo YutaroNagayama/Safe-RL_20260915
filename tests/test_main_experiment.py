@@ -213,6 +213,21 @@ def test_four_face_banks_follow_main_layout(tmp_path):
     assert saw_repeated_entry and saw_adjacent_exit
 
 
+def test_notebook_device_probe_reports_training_and_evaluation_separately(tmp_path):
+    import sys
+    from scripts.main_notebook_runner import probe_training_device
+
+    settings = tmp_path / 'settings.yaml'
+    settings.write_text('base_config: {device: cpu}\nevaluation_device: cpu\n')
+    repo = Path(__file__).resolve().parents[1]
+    info = probe_training_device(repo, settings)
+    assert Path(info['python']) == Path(sys.executable)
+    assert info['requested_device'] == info['training_device'] == info['evaluation_device'] == 'cpu'
+    assert info['cuda_device_name'] is None
+    assert info['torch_cuda'] == torch.version.cuda
+    assert list(tmp_path.iterdir()) == [settings]
+
+
 def test_notebook_progress_reads_latest_completed_episode(tmp_path):
     from scripts.main_notebook_runner import _latest_progress
 

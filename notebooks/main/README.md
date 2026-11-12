@@ -6,6 +6,8 @@
 
 `main_experiment.ipynb`から手動実行できます。既存のプロジェクト仮想環境のKernelを選択し、上から学習セルまで実行します。既定の `WORKERS = 2`、`TARGET = 30000` で共通bankを一度だけ準備し、A/B/F各3 seedを最大2本並列で学習します。学習セルを実行すると開始します。個別コマンドを使う場合もリポジトリルートを作業場所にします。
 
+学習前の「学習デバイスの確認」セルは、学習workerと同じPythonの別プロセスでPyTorchのデバイスを解決します。Windowsでは、`cuda:0` などの番号と目的のGeForceの製品名を確認してから学習セルへ進みます。評価用デバイスと、カーネルのPythonパス・PyTorch・CUDAビルドも表示します。このセル単体ではbank生成や学習は始まりません。
+
 ```powershell
 python -m uav_safe_marl.experiments.main prepare --root results/main_four_faces_free_30m
 python -m uav_safe_marl.experiments.main train --root results/main_four_faces_free_30m --method A --seed 0

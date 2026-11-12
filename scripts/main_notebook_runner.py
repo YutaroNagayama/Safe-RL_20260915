@@ -12,7 +12,42 @@ import subprocess
 import sys
 from time import monotonic, sleep
 
+import yaml
+
+from uav_safe_marl import load_config
 from uav_safe_marl.experiments.main import TRAINED, file_hash, prepare
+from uav_safe_marl.policies.base import require_torch, resolve_device
+
+
+def _training_device_info(settings_path):
+    settings = yaml.safe_load(Path(settings_path).read_text(encoding="utf-8"))
+    requested = load_config(overrides=settings["base_config"]).device
+    torch = require_torch()
+    device = torch.zeros(1, device=resolve_device(requested)).device
+    return {
+        "python": sys.executable,
+        "torch": torch.__version__,
+        "torch_cuda": torch.version.cuda,
+        "cuda_available": torch.cuda.is_available(),
+        "requested_device": requested,
+        "training_device": str(device),
+        "cuda_device_name": torch.cuda.get_device_name(device) if device.type == "cuda" else None,
+        "evaluation_device": settings["evaluation_device"],
+    }
+
+
+def probe_training_device(repo, settings):
+    """Check device selection in a fresh process like the training workers."""
+    probe = subprocess.run(
+        [sys.executable, "-c",
+         "import json, sys; from scripts.main_notebook_runner import _training_device_info; "
+         "print(json.dumps(_training_device_info(sys.argv[1])))",
+         str(Path(settings).resolve())],
+        cwd=repo, capture_output=True, text=True,
+    )
+    if probe.returncode:
+        raise RuntimeError(f"学習デバイスを確認できませんでした。\n{probe.stderr.strip()}")
+    return json.loads(probe.stdout)
 
 
 def _read_json(path):

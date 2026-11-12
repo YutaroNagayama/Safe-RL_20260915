@@ -4,16 +4,16 @@
 
 設定は`settings.yaml`。初回はA/B/Fを3seed・30k、n10・episode dual・Cost-only warm-upで学習します。Reactive通信半径75mとHOCBF監視距離50mは独立です。C/DはA/Bの同じcheckpointのOFF評価です。
 
-`main_experiment.ipynb`から手動実行できます。既存のプロジェクト仮想環境のKernelを選択し、上から学習セルまで実行します。既定の `WORKERS = 2`、`TARGET = 30000` で共通bankを一度だけ準備し、A/B/F各3 seedを最大2本並列で学習します。学習セルを実行すると開始します。個別コマンドを使う場合もリポジトリルートを作業場所にします。
+`main_experiment.ipynb`でプロジェクト仮想環境のカーネルを選び、上から学習セルまで実行します。既定の `TARGET = 30000` で共通bankを準備し、A/B/F各3 seedをカーネル内で1 runずつ学習・development評価します。個別コマンドを使う場合はリポジトリ直下で実行します。
 
-学習前の「学習デバイスの確認」セルは、学習workerと同じPythonの別プロセスでPyTorchのデバイスを解決します。Windowsでは、`cuda:0` などの番号と目的のGeForceの製品名を確認してから学習セルへ進みます。評価用デバイスと、カーネルのPythonパス・PyTorch・CUDAビルドも表示します。このセル単体ではbank生成や学習は始まりません。
+学習前の「学習デバイスの確認」セルは、学習に使うカーネル上でPyTorchのデバイスを解決します。Windowsでは、`cuda:0` などの番号と目的のGeForceの製品名を確認してから学習セルへ進みます。評価用デバイスと、カーネルのPythonパス・PyTorch・CUDAビルドも表示します。このセル単体ではbank生成や学習は始まりません。
 
 ```powershell
 python -m uav_safe_marl.experiments.main prepare --root results/main_four_faces_free_30m
 python -m uav_safe_marl.experiments.main train --root results/main_four_faces_free_30m --method A --seed 0
 ```
 
-Notebookは実行中の各runをtqdmバーで表示します。warm-up収集は完了episode数、Cost Critic warm-upは更新数、online学習は累積step数と補足の完了episode数、developmentは保存済みケース数で進みます。約0.5秒おきに確認し、表示が変わったときだけ更新します。Cost Criticの表示は初回・25更新ごと・終了時に進みます。段階とrunが切り替わるたびに同じバーを使い回すので、既定では最大2本です。詳細なプロセス出力は `launcher_logs/` に保存します。同じ出力先で別のNotebookやPowerShellから重複起動しないでください。セルを中断した場合は子プロセスも停止し、次回は直近の保存点から再開します。再実行時は学習・developmentが完了済みの組を再利用し、保存済みモデルのdevelopmentが欠けている場合は補います。60kへ延長するときは同じ出力先で `TARGET = 60000` に変更します。decision評価・確率校正・集計はそれぞれのセルで有効にします。
+実行中の1 runを同じtqdmバーに表示します。warm-up収集は完了episode数、Cost Critic warm-upは更新数、online学習は累積step数と完了episode数、developmentは評価ケース数で進みます。チェックポイントの読込・保存中はファイル名が出ます。旧版の並列学習から切り替える場合は、旧Notebookを中断してworkerの終了を確認してから同じ出力先で再開します。直近の完全チェックポイントから再開し、完了済みの組を再利用します。保存済みモデルのdevelopmentが欠けている場合は評価を補います。60kへ延長するときは同じ出力先で `TARGET = 60000` に変更します。decision評価・確率校正・集計はそれぞれのセルで有効にします。
 
 各seedでA/B/Fをそろえ、初回は全9 runを30k到達後のepisode終端で止めます。固定developmentとN別学習曲線で、方式差の方向がseedをまたいで揃うか、終盤の指標がまだ動いているかを確認します。30kで判断できれば同時点のモデルをdecisionで比較し、不足なら全9 runを累積60kへ延長します。確認Testは凍結まで温存します。warm-up収集・Cost-only更新、30k（延長時のみ60k）保存と別モデルによるdevelopment評価は自動です。中断したら同じtrain呼出しで再開します。warm-upは収集終了と500更新ごと、onlineは従来のepisode間隔と段階終了でfull checkpointを保存します。
 
@@ -26,8 +26,6 @@ python -m uav_safe_marl.experiments.main analyze --root results/main_four_faces_
 ```
 
 確率評価はA/B/Fだけで、各Criticと同じHOCBF ON・同じ初期sample actionを使います。rolloutは1件ずつ保存し、完了済みはidentityを確認して再利用します。未完了分だけ同じ乱数キーで再実行します。設定の`evaluation_workers`を増やすとscenario単位で並列化し、workerごとにモデルを1回だけ読み込みます。初期値1は確実な直列動作のためで、本番機で計測して固定してください。
-
-再開時は、今回のworkerが保存点を読み込んでから進捗値を表示します。読込中は `起動・保存点読込中`、収集が済んで保存やCost Criticの準備をしている間は `収集保存・Cost Critic準備中` と表示します。
 
 ## Windowsで学習の同時実行数を測る
 

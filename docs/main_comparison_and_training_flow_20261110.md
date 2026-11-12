@@ -25,4 +25,4 @@
 5. **decision比較。** 同一到達段階・共通120形状で、A/B/C/D/E/F/R/F_OFFを平均行動で評価。E/Rは各形状1回。A/B/Fの確率評価は各N10形状×3反復で、HOCBF ON・学習時のCost定義と初回sample actionを合わせる。C/D/F_OFFは正式校正には含めない。
 6. **追加・確認。** N別・seed別・同一形状の対応差を確認する。通過、分離、経路長比、純介入、通信量に加え、無違反通過と到達時間の裾も見る。初回で判断できれば止め、不足に応じて予算延長、seed、評価形状、確率反復を追加する。設定とモデルを固定するまでconfirmation_testは開かない。確率Costの打切りを考慮した予算達成判定は別途必要。
 
-[main Notebook](../notebooks/main/main_experiment.ipynb)・[設定](../notebooks/main/settings.yaml)・[実行説明](../notebooks/main/README.md)。現行NotebookはA/B/F×3 seedを学習セルから最大2本ずつ起動する。共通bank準備は学習セル内で一度だけ行う。
+[main Notebook](../notebooks/main/main_experiment.ipynb)・[設定](../notebooks/main/settings.yaml)・[実行説明](../notebooks/main/README.md)。現行NotebookはA/B/F×3 seedをカーネル内で順番に実行し、各runの学習とdevelopment評価を終えてから次のrunへ進む。共通bank準備は学習セル内で一度だけ行う。

@@ -219,8 +219,7 @@ def test_notebook_device_probe_reports_training_and_evaluation_separately(tmp_pa
 
     settings = tmp_path / 'settings.yaml'
     settings.write_text('base_config: {device: cpu}\nevaluation_device: cpu\n')
-    repo = Path(__file__).resolve().parents[1]
-    info = probe_training_device(repo, settings)
+    info = probe_training_device(settings)
     assert Path(info['python']) == Path(sys.executable)
     assert info['requested_device'] == info['training_device'] == info['evaluation_device'] == 'cpu'
     assert info['cuda_device_name'] is None
@@ -228,19 +227,30 @@ def test_notebook_device_probe_reports_training_and_evaluation_separately(tmp_pa
     assert list(tmp_path.iterdir()) == [settings]
 
 
-def test_notebook_reports_collection_save_before_serializing(monkeypatch, tmp_path):
-    from scripts.main_notebook_worker import NotebookTrainer
+def test_notebook_reports_collection_save_and_avoids_duplicate(monkeypatch, tmp_path):
+    from scripts.main_notebook_runner import NotebookTrainer
 
     trainer = NotebookTrainer.__new__(NotebookTrainer)
-    trainer.collection_goal = trainer.completed_episodes = 100
+    trainer.collecting = True
+    trainer.completed_episodes = 100
+    trainer.total_environment_steps = 30000
+    trainer.scenario_bank_hash = "warmup-bank"
+    trainer.saved_collection = None
     events = []
-    trainer.report_progress = lambda phase, **fields: events.append((phase, fields["checkpoint"]))
+    trainer.report = lambda *args, **fields: events.append(fields["detail"])
     monkeypatch.setattr(SafeRLTrainer, 'save_checkpoint', lambda self, path: events.append(('save', path.name)))
+    monkeypatch.setattr(SafeRLTrainer, 'load_checkpoint', lambda self, path: {})
     trainer.save_checkpoint(tmp_path/'collection.pt')
-    assert events == [('saving_collection', 'collection.pt'), ('save', 'collection.pt')]
+    trainer.save_checkpoint(tmp_path/'collection.pt')
+    assert events == ['保存中 collection.pt', ('save', 'collection.pt'), '']
+    trainer.saved_collection = None
+    events.clear()
+    trainer.load_checkpoint(tmp_path/'collection.pt')
+    trainer.save_checkpoint(tmp_path/'collection.pt')
+    assert events == ['collection.pt']
 
 
-def test_notebook_grid_bounds_workers_and_recovers_missing_development(tmp_path, monkeypatch, capsys):
+def test_notebook_grid_runs_serially_and_recovers_missing_development(tmp_path, monkeypatch, capsys):
     from io import StringIO
     from tqdm.std import tqdm
     from scripts import main_notebook_runner as launcher
@@ -253,19 +263,17 @@ def test_notebook_grid_bounds_workers_and_recovers_missing_development(tmp_path,
     (old_run/'notebook_progress.json').write_text(json.dumps(old_status))
     (old_collection/'metrics.jsonl').write_text(
         '{"episode":1,"cumulative_environment_steps":987654,"completed_episodes":2}\n')
-    repo = Path(__file__).resolve().parents[1]
     started = []
-    peak = 0
-    original = launcher.subprocess.Popen
+    original = launcher.main.train_method
 
-    def record(*args, **kwargs):
-        nonlocal peak
-        process = original(*args, **kwargs)
-        started.append(process)
-        peak = max(peak, sum(p.poll() is None for p in started))
-        return process
+    def record(output, method, seed, target):
+        started.append((method, seed))
+        if method != 'A':
+            previous = 'A' if method == 'B' else 'B'
+            assert (launcher._development_path(output, previous, seed, target)/'completed.json').is_file()
+        return original(output, method, seed, target)
 
-    monkeypatch.setattr(launcher.subprocess, 'Popen', record)
+    monkeypatch.setattr(launcher.main, 'train_method', record)
     display = StringIO()
     bars = []
 
@@ -274,29 +282,28 @@ def test_notebook_grid_bounds_workers_and_recovers_missing_development(tmp_path,
         bars.append(bar)
         return bar
 
-    completed = launcher.run_training_grid(repo, tmp_path/'settings.yaml', root,
-                                           target=3, workers=2, status_interval=300,
+    completed = launcher.run_training_grid(tmp_path/'settings.yaml', root, target=3,
                                            progress_factory=make_bar)
-    assert set(completed) == {('A', 0), ('B', 0), ('F', 0)}
-    assert peak == 2
-    assert len(bars) == 2
+    assert completed == started == [('A', 0), ('B', 0), ('F', 0)]
+    assert len(bars) == 1
     for method in ('A', 'B', 'F'):
         assert f'{method}/0' in display.getvalue()
-    assert 'B/0 · 起動・保存点読込中' in display.getvalue()
     assert '987,654' not in display.getvalue()
+    assert '2/2 ep' in display.getvalue()
+    assert '1/1 更新' in display.getvalue()
+    assert '3/3 step, ep 1' in display.getvalue()
     assert 'development完了' in display.getvalue()
     assert '1/1 件' in display.getvalue()
     status = json.loads((old_run/'notebook_progress.json').read_text())
-    assert status['token'] != old_status['token']
-    assert (status['phase'], status['steps'], status['episodes']) == ('online', 3, 1)
+    assert status == old_status
     assert not capsys.readouterr().out
     model = root/'training/A/seed_000/model_3.pt'
     before = model.stat().st_mtime_ns
     evaluation = root/'evaluation/development/step_3/mean/A/seed_000/completed.json'
     evaluation.unlink()
     count = len(started)
-    assert set(launcher.run_training_grid(repo, tmp_path/'settings.yaml', root,
-                                         target=3, workers=2, status_interval=300)) == set(completed)
-    assert len(started) == count + 2  # Only A resumes, then fills its evaluation.
+    assert launcher.run_training_grid(tmp_path/'settings.yaml', root,
+                                      target=3, progress_factory=make_bar) == completed
+    assert started[count:] == [('A', 0)]
     assert evaluation.exists()
     assert model.stat().st_mtime_ns == before

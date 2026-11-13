@@ -238,6 +238,7 @@ def test_notebook_reports_collection_save_and_avoids_duplicate(monkeypatch, tmp_
     trainer.saved_collection = None
     events = []
     trainer.report = lambda *args, **fields: events.append(fields["detail"])
+    trainer.record_io = lambda *args: None
     monkeypatch.setattr(SafeRLTrainer, 'save_checkpoint', lambda self, path: events.append(('save', path.name)))
     monkeypatch.setattr(SafeRLTrainer, 'load_checkpoint', lambda self, path: {})
     trainer.save_checkpoint(tmp_path/'collection.pt')
@@ -264,16 +265,16 @@ def test_notebook_grid_runs_serially_and_recovers_missing_development(tmp_path, 
     (old_collection/'metrics.jsonl').write_text(
         '{"episode":1,"cumulative_environment_steps":987654,"completed_episodes":2}\n')
     started = []
-    original = launcher.main.train_method
+    original = launcher._run_with_progress
 
-    def record(output, method, seed, target):
+    def record(output, method, seed, target, *args):
         started.append((method, seed))
         if method != 'A':
             previous = 'A' if method == 'B' else 'B'
             assert (launcher._development_path(output, previous, seed, target)/'completed.json').is_file()
-        return original(output, method, seed, target)
+        return original(output, method, seed, target, *args)
 
-    monkeypatch.setattr(launcher.main, 'train_method', record)
+    monkeypatch.setattr(launcher, '_run_with_progress', record)
     display = StringIO()
     bars = []
 
@@ -307,3 +308,122 @@ def test_notebook_grid_runs_serially_and_recovers_missing_development(tmp_path, 
     assert started[count:] == [('A', 0)]
     assert evaluation.exists()
     assert model.stat().st_mtime_ns == before
+
+
+def test_notebook_resumes_legacy_warmup_then_small_checkpoint_exactly(tmp_path):
+    from scripts import main_notebook_runner as notebook
+    from uav_safe_marl.evaluation import load_scenario_bank
+
+    root, data = small_settings(tmp_path)
+    bank = load_scenario_bank(root / "banks/warmup.json")
+    warm = root / "training/B/seed_000/warmup"
+    cfg = config_for(data, "B", 0, None)
+
+    def update(trainer):
+        trainer.backend.update_cost_critic_only_n_step(
+            trainer.buffer.sample_n_step(2, 2, cfg.learning.gamma_cost))
+
+    old = SafeRLTrainer(cfg, build_env(cfg), warm / "collection")
+    try:
+        old.train(len(bank), scenarios=bank, update_mode="collect_only", live_display=False)
+        update(old)
+        old.save_checkpoint(warm / "progress.pt", extra_metadata={"main_warmup_updates": 1})
+        update(old)
+        update(old)
+        expected = deepcopy(old.backend.state_dict())
+        replay_rng = old.buffer.sampling_state_dict()
+        expected_rng = capture_rng()
+    finally:
+        old.env.close()
+
+    # A stale interrupted file is irrelevant, and legacy progress carries its own Replay.
+    (warm / "progress.pt.tmp").touch()
+    for updates in (2, 3):
+        trainer = notebook.NotebookTrainer(cfg, build_env(cfg), warm / "collection",
+                                           report=lambda *a, **kw: None, warmup_updates=updates)
+        try:
+            notebook._warmup(trainer, root, warm, updates)
+            if updates == 3:
+                assert_tree(expected, trainer.backend.state_dict())
+                assert_tree(replay_rng, trainer.buffer.sampling_state_dict())
+                assert_tree(expected_rng, capture_rng())
+        finally:
+            trainer.env.close()
+    delta = torch.load(warm / "cost_resume.pt", weights_only=False)
+    assert delta["extra_metadata"]["base_file"] == "progress.pt"
+    assert delta["extra_metadata"]["main_warmup_updates"] == 3
+    assert "replay_buffer" not in delta and "initial_state_buffer" not in delta
+
+
+def test_notebook_handoff_and_reduced_batch_match_existing_runner(tmp_path, monkeypatch):
+    from io import StringIO
+    from tqdm.std import tqdm
+    from scripts import main_notebook_runner as notebook
+
+    old_dir, new_dir = tmp_path / "old", tmp_path / "new"
+    old_dir.mkdir()
+    new_dir.mkdir()
+    old_root, _ = small_settings(old_dir)
+    new_root, _ = small_settings(new_dir)
+    monkeypatch.setattr(notebook.main, "TRAINED", ("A",))
+    original_config_for = notebook.main.config_for
+
+    def frequent_progress(*args, **kwargs):
+        cfg = original_config_for(*args, **kwargs)
+        cfg.monitoring.step_refresh_interval = 1
+        return cfg
+
+    monkeypatch.setattr(notebook.main, "config_for", frequent_progress)
+    train_method(old_root, "A", 0, 6)
+    display = StringIO()
+    assert notebook.run_training_grid(new_dir / "settings.yaml", new_root, target=6,
+                                      progress_factory=lambda **kw: tqdm(file=display, **kw)) == [("A", 0)]
+    assert "ep内 1/3 step" in display.getvalue()
+    assert "1/3 step, 完了ep 0" in display.getvalue()
+    checkpoint = "training/A/seed_000/latest.pt"
+    expected = torch.load(old_root / checkpoint, weights_only=False)
+    actual = torch.load(new_root / checkpoint, weights_only=False)
+    assert_tree(expected, actual)
+
+    def unexpected_training(*args, **kwargs):
+        pytest.fail("A completed legacy run should be reused")
+
+    monkeypatch.setattr(notebook, "_run_with_progress", unexpected_training)
+    assert notebook.run_training_grid(old_dir / "settings.yaml", old_root, target=6,
+                                      progress_factory=lambda **kw: tqdm(file=StringIO(), **kw)) == [("A", 0)]
+
+
+@pytest.mark.parametrize("interrupted_file", ["model_3.pt", "completed.json"])
+def test_notebook_restores_interrupted_milestone_before_extending(tmp_path, monkeypatch, interrupted_file):
+    from io import StringIO
+    from tqdm.std import tqdm
+    from scripts import main_notebook_runner as notebook
+
+    root, _ = small_settings(tmp_path)
+    monkeypatch.setattr(notebook.main, "TRAINED", ("A",))
+    save = notebook.NotebookTrainer.save_checkpoint
+    write = notebook.main.write
+
+    def interrupt_save(self, path, **kwargs):
+        if Path(path).name == interrupted_file:
+            raise KeyboardInterrupt()
+        return save(self, path, **kwargs)
+
+    def interrupt_write(path, data):
+        if path.name == interrupted_file:
+            raise KeyboardInterrupt()
+        return write(path, data)
+
+    def run(target):
+        return notebook.run_training_grid(tmp_path / "settings.yaml", root, target=target,
+                                          progress_factory=lambda **kw: tqdm(file=StringIO(), **kw))
+
+    with monkeypatch.context() as interrupted:
+        interrupted.setattr(notebook.NotebookTrainer, "save_checkpoint", interrupt_save)
+        interrupted.setattr(notebook.main, "write", interrupt_write)
+        with pytest.raises(KeyboardInterrupt):
+            run(6)
+    assert run(6) == [("A", 0)]
+    for point in (3, 6):
+        assert (root / f"training/A/seed_000/model_{point}.pt").is_file()
+        assert (notebook._development_path(root, "A", 0, point) / "completed.json").is_file()

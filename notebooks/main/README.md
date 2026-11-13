@@ -15,7 +15,11 @@ python -m uav_safe_marl.experiments.main train --root results/main_four_faces_fr
 
 実行中の1 runを同じtqdmバーに表示します。warm-up収集は完了episode数、Cost Critic warm-upは更新数、online学習は累積step数と完了episode数、developmentは評価ケース数で進みます。チェックポイントの読込・保存中はファイル名が出ます。旧版の並列学習から切り替える場合は、旧Notebookを中断してworkerの終了を確認してから同じ出力先で再開します。直近の完全チェックポイントから再開し、完了済みの組を再利用します。保存済みモデルのdevelopmentが欠けている場合は評価を補います。60kへ延長するときは同じ出力先で `TARGET = 60000` に変更します。decision評価・確率校正・集計はそれぞれのセルで有効にします。
 
-各seedでA/B/Fをそろえ、初回は全9 runを30k到達後のepisode終端で止めます。固定developmentとN別学習曲線で、方式差の方向がseedをまたいで揃うか、終盤の指標がまだ動いているかを確認します。30kで判断できれば同時点のモデルをdecisionで比較し、不足なら全9 runを累積60kへ延長します。確認Testは凍結まで温存します。warm-up収集・Cost-only更新、30k（延長時のみ60k）保存と別モデルによるdevelopment評価は自動です。中断したら同じtrain呼出しで再開します。warm-upは収集終了と500更新ごと、onlineは従来のepisode間隔と段階終了でfull checkpointを保存します。
+各seedでA/B/Fをそろえ、初回は全9 runを30k到達後のepisode終端で止めます。固定developmentとN別学習曲線で、方式差の方向がseedをまたいで揃うか、終盤の指標がまだ動いているかを確認します。30kで判断できれば同時点のモデルをdecisionで比較し、不足なら全9 runを累積60kへ延長します。確認Testは凍結まで温存します。
+
+Notebookでは、収集中の完了ep数に加えてエピソード内のstep、online学習では累積stepと完了ep数を既定で25 tickごととep終了時に更新します。Cost Criticは25更新ごとに表示します。保存・読込・照合の時間とファイルサイズは `checkpoint_io.jsonl` に記録します。
+
+NotebookのCost Critic途中保存は500更新ごとと最終更新時の `cost_resume.pt` です。固定Replayの土台は新規runでは `collection.pt`、既存の完全版途中保存から再開したrunでは `progress.pt` です。差分から再開する間は土台と差分の両方を保持してください。onlineの完全保存は25 episodeごとと段階終了時です。同一セッションではwarm-upの状態をそのままonlineに渡します。onlineの完全保存前に中断した場合、次回はwarm-upの最終保存点からonlineを再開します。既存の `full.pt` と `latest.pt` も読み込めます。従来のCLIは旧形式で保存するため、Notebookで差分保存したrunはNotebookから再開してください。
 
 判断用評価は、各seedでA/B/C/D/F/F_OFF、固定対照E/Rを実行します。E/Rはseed0だけです。
 

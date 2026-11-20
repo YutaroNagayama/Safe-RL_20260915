@@ -1,5 +1,7 @@
 # Main実験の実行入口
 
+**正規F（距離予算1.5）・B50・D50の追加実験は[main_additional.ipynb](main_additional.ipynb)を使います。** 既存A/B75/HBAの未実施ロールアウトも同じNotebookで補います。手順と保存・持ち帰りは[追加実験のWindows実行](ADDITIONAL_README.md)を参照してください。以下は旧A/B/旧Fの初回実験用です。
+
 研究ロジックは`notebooks/pre_main_gate.ipynb`と共通のTrainer/SAC/HOCBFを使います。main固有の処理は`uav_safe_marl.experiments.main`へ分離しました。旧Windows Bookは旧条件のまま保持しています。
 
 設定は`settings.yaml`。初回はA/B/Fを3seed・30k、n10・episode dual・Cost-only warm-upで学習します。Reactive通信半径75mとHOCBF監視距離50mは独立です。C/DはA/Bの同じcheckpointのOFF評価です。

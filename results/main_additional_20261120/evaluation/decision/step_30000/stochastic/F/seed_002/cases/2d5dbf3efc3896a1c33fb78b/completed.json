@@ -1,0 +1,681 @@
+{
+  "identity": {
+    "method": "F",
+    "training_method": "F",
+    "training_seed": 2,
+    "runtime_hocbf": true,
+    "stochastic": true,
+    "checkpoint_sha256": "9dbecf5e67911dadba0f6917222e940f98d1501528329360140200ba77ecf69b",
+    "source_sha256": "ed39050c8622fb2e7a52841c90eb17e402f411bd1d1bb6fdc6d6719d0aa62855",
+    "bank_sha256": "06c244f19868794b79b85d10e97890d706107b3eba1261869b1a4c213688a712",
+    "step_label": 30000,
+    "learning_budget": 1.5,
+    "learning_intervention_cost": false,
+    "communication_mode": "prior_share",
+    "reactive_radius": 75.0,
+    "execution_system": "Windows",
+    "runner_sha256": "fb08d506878b5361d989f2090ed0f7e2c8a1ebc63447908e5ba50f12d90ddce9"
+  },
+  "metrics": {
+    "scenario_id": "interaction_traffic_four_faces_free_n4_root202611534_0008",
+    "actual_agent_count": 4,
+    "max_agent_count": 16,
+    "episode_success": 1.0,
+    "goal_reached_count": 4,
+    "separation_violation_pair_ticks": 0,
+    "active_pair_ticks": 1015,
+    "separation_violation_rate": 0.0,
+    "path_stretch": 0.9858486621302334,
+    "pure_intervention_squared_sum": 0.04197782361025851,
+    "runtime_correction_squared_sum": 0.04197782361025851,
+    "active_agent_ticks": 1068,
+    "pure_safety_intervention_magnitude": 3.93050782867589e-05,
+    "runtime_filter_correction": 3.93050782867589e-05,
+    "transmitted_bytes": 212352,
+    "active_agent_seconds": 106.80000000000001,
+    "communication_load": 1988.3146067415728,
+    "terminated": true,
+    "truncated": false,
+    "episode_duration": 40.6,
+    "undiscounted_episode_cost": 6.2065057412522915,
+    "discounted_episode_cost": 1.0294168694210675,
+    "start_state_cost_members": [
+      0.4951125681400299,
+      1.506045937538147
+    ],
+    "start_state_cost_mean": 1.0005792379379272,
+    "start_state_cost_std": 0.5054666996002197,
+    "start_state_cost_ucb": 1.506045937538147,
+    "policy_execution_mode": "stochastic",
+    "initial_action_paired_with_cost_estimate": true,
+    "cost_mean_error": -0.028837631483140225,
+    "cost_ucb_error": 0.4766290681170795,
+    "empirical_ucb_covers_return": true,
+    "distance_cost": 6.206505741252287,
+    "intervention_cost": 0.0,
+    "scenario_descriptor": {
+      "traffic_density": 9.110787172011662e-07,
+      "predicted_edge_count": 3,
+      "mean_degree": 1.5,
+      "max_degree": 2,
+      "edge_ratio": 0.5,
+      "all_to_all": false,
+      "candidate_empty": false,
+      "minimum_predicted_cpa": 7.526709299978107,
+      "minimum_cpa_pair": [
+        1,
+        2
+      ],
+      "minimum_cpa_time": 21.024774838084355,
+      "earliest_candidate_cpa_time": 21.024774838084355,
+      "descriptor_d_safe": 10.0,
+      "descriptor_d_warn": 30.0,
+      "descriptor_d_eng": 50.0,
+      "candidate_fraction_cpa_le_d_eng": 1.0,
+      "candidate_fraction_cpa_le_d_warn": 0.6666666666666666,
+      "candidate_fraction_cpa_lt_d_safe": 0.3333333333333333,
+      "has_candidate_cpa_le_d_eng": true,
+      "has_candidate_cpa_le_d_warn": true,
+      "has_candidate_cpa_lt_d_safe": true,
+      "velocity_capability": {
+        "minimum": 11.875301051553224,
+        "maximum": 13.594572784054964,
+        "mean": 12.68507686498564,
+        "standard_deviation": 0.6360427510268392,
+        "coefficient_of_variation": 0.050141024591068506
+      },
+      "acceleration_capability": {
+        "minimum": 2.0635625027129714,
+        "maximum": 3.5564856347567844,
+        "mean": 2.940923787148188,
+        "standard_deviation": 0.5522577613401429,
+        "coefficient_of_variation": 0.18778377180445976
+      },
+      "spatial_scaling_mode": "fixed",
+      "spatial_dimensions": [
+        280.0,
+        280.0,
+        56.0
+      ],
+      "spatial_volume": 4390400.0,
+      "spatial_volume_factor": 1.0,
+      "generation_attempts": 1,
+      "candidate_zero_rejections": 0,
+      "initial_cbf_edge_count": 0
+    },
+    "rollout_pair_results": [
+      {
+        "first": 0,
+        "second": 1,
+        "candidate": true,
+        "actual_minimum_distance": 36.21563328943774,
+        "cbf_engaged": true,
+        "candidate_miss": false,
+        "candidate_edge_lifetime_ticks": 289
+      },
+      {
+        "first": 0,
+        "second": 2,
+        "candidate": true,
+        "actual_minimum_distance": 25.233351235790128,
+        "cbf_engaged": true,
+        "candidate_miss": false,
+        "candidate_edge_lifetime_ticks": 341
+      },
+      {
+        "first": 0,
+        "second": 3,
+        "candidate": false,
+        "actual_minimum_distance": 359.9872252232842,
+        "cbf_engaged": false,
+        "candidate_miss": false,
+        "candidate_edge_lifetime_ticks": 0
+      },
+      {
+        "first": 1,
+        "second": 2,
+        "candidate": true,
+        "actual_minimum_distance": 18.059975034839717,
+        "cbf_engaged": true,
+        "candidate_miss": false,
+        "candidate_edge_lifetime_ticks": 289
+      },
+      {
+        "first": 1,
+        "second": 3,
+        "candidate": false,
+        "actual_minimum_distance": 90.37276540948554,
+        "cbf_engaged": false,
+        "candidate_miss": false,
+        "candidate_edge_lifetime_ticks": 0
+      },
+      {
+        "first": 2,
+        "second": 3,
+        "candidate": false,
+        "actual_minimum_distance": 176.32114408180072,
+        "cbf_engaged": false,
+        "candidate_miss": false,
+        "candidate_edge_lifetime_ticks": 0
+      }
+    ],
+    "cbf_engaged_pair_count": 3,
+    "candidate_miss_count": 0,
+    "goal_reward": 15.0,
+    "progress": 347.0126785789292,
+    "time_penalty": 4.0600000000000005,
+    "absolute_distance_penalty": 0.0,
+    "residual_penalty": 2.819126265613753,
+    "mean_normalized_goal_distance": 0.4577881530898632,
+    "final_goal_distance_mean": 4.666610425368592,
+    "final_goal_distance_max": 4.910069444044877,
+    "minimum_goal_distance_mean": 4.666610425368592,
+    "minimum_goal_distance_per_agent": [
+      4.736564011322918,
+      4.4982029552190035,
+      4.910069444044877,
+      4.521605290887569
+    ],
+    "scenario_traffic_density": 9.110787172011662e-07,
+    "scenario_predicted_edge_count": 3,
+    "scenario_mean_degree": 1.5,
+    "scenario_max_degree": 2,
+    "scenario_edge_ratio": 0.5,
+    "scenario_all_to_all": false,
+    "scenario_candidate_empty": false,
+    "scenario_minimum_predicted_cpa": 7.526709299978107,
+    "scenario_minimum_cpa_time": 21.024774838084355,
+    "scenario_earliest_candidate_cpa_time": 21.024774838084355,
+    "scenario_descriptor_d_safe": 10.0,
+    "scenario_descriptor_d_warn": 30.0,
+    "scenario_descriptor_d_eng": 50.0,
+    "scenario_candidate_fraction_cpa_le_d_eng": 1.0,
+    "scenario_candidate_fraction_cpa_le_d_warn": 0.6666666666666666,
+    "scenario_candidate_fraction_cpa_lt_d_safe": 0.3333333333333333,
+    "scenario_has_candidate_cpa_le_d_eng": true,
+    "scenario_has_candidate_cpa_le_d_warn": true,
+    "scenario_has_candidate_cpa_lt_d_safe": true,
+    "scenario_spatial_volume": 4390400.0,
+    "scenario_spatial_volume_factor": 1.0,
+    "scenario_generation_attempts": 1,
+    "scenario_candidate_zero_rejections": 0,
+    "scenario_initial_cbf_edge_count": 0,
+    "conditioned_initial_execution_action": [
+      [
+        -0.5774798393249512,
+        -0.7477231025695801,
+        0.1055012196302414
+      ],
+      [
+        0.9833704829216003,
+        0.9968119263648987,
+        -0.29290637373924255
+      ],
+      [
+        -0.8696179389953613,
+        0.23563052713871002,
+        0.6260087490081787
+      ],
+      [
+        0.9981702566146851,
+        0.9858682751655579,
+        -0.5189558267593384
+      ],
+      [
+        0.0,
+        -0.0,
+        -0.0
+      ],
+      [
+        -0.0,
+        -0.0,
+        -0.0
+      ],
+      [
+        -0.0,
+        0.0,
+        -0.0
+      ],
+      [
+        -0.0,
+        -0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      [
+        0.0,
+        -0.0,
+        -0.0
+      ],
+      [
+        0.0,
+        -0.0,
+        0.0
+      ],
+      [
+        -0.0,
+        0.0,
+        -0.0
+      ],
+      [
+        -0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      [
+        -0.0,
+        -0.0,
+        -0.0
+      ],
+      [
+        -0.0,
+        -0.0,
+        -0.0
+      ]
+    ],
+    "conditioned_initial_nominal_action": [
+      [
+        -0.01815396547317505,
+        0.6811676025390625,
+        0.2603544592857361
+      ],
+      [
+        -1.5966845750808716,
+        1.1812176704406738,
+        0.02670687437057495
+      ],
+      [
+        -2.5504140853881836,
+        1.1236438751220703,
+        1.0046361684799194
+      ],
+      [
+        2.935797929763794,
+        0.6739150881767273,
+        -0.15608739852905273
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ]
+    ],
+    "rollout_initial_execution_action": [
+      [
+        -0.5774798393249512,
+        -0.7477231025695801,
+        0.1055012196302414
+      ],
+      [
+        0.9833704829216003,
+        0.9968119263648987,
+        -0.29290637373924255
+      ],
+      [
+        -0.8696179389953613,
+        0.23563052713871002,
+        0.6260087490081787
+      ],
+      [
+        0.9981702566146851,
+        0.9858682751655579,
+        -0.5189558267593384
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ]
+    ],
+    "rollout_initial_nominal_action": [
+      [
+        -0.018154157013577255,
+        0.6811673810573469,
+        0.2603543533148394
+      ],
+      [
+        -1.596684383587456,
+        1.181217660564782,
+        0.026706841160043404
+      ],
+      [
+        -2.5504144980615067,
+        1.1236445238015418,
+        1.0046361485547604
+      ],
+      [
+        2.93579803805042,
+        0.6739153515504076,
+        -0.15608736811965762
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ]
+    ],
+    "paired_initial_execution_action_max_abs_error": 0.0,
+    "paired_initial_nominal_action_max_abs_error": 6.486794714710697e-07,
+    "paired_initial_action_matches_rollout": true,
+    "paired_initial_nominal_matches_rollout": true,
+    "method": "F",
+    "training_seed": 2,
+    "repeat": 0,
+    "rollout_rng_key": 3216746090,
+    "runtime_hocbf": true,
+    "learning_budget": 1.5,
+    "learning_intervention_cost": false,
+    "discounted_distance_cost": 1.0294168694210675,
+    "discounted_pure_cost_common": 0.0030523417761197332,
+    "discounted_common_cost": 1.0324692111971874,
+    "runtime_nonzero_agent_ticks": 6,
+    "runtime_active_agent_ticks": 1068,
+    "runtime_nonzero_squared_mean": 0.006996303935043084,
+    "warning_agent_tick_fraction": 0.16104868913857678,
+    "max_abs_active_altitude": 26.970234797939515,
+    "extent_outside_agent_ticks": 8,
+    "safety_wall_times": {
+      "p50": 0.00016789999790489674,
+      "p95": 0.00852874998236075,
+      "p99": 0.0096405349613633,
+      "mean": 0.0018891310336508701,
+      "max": 0.010895899962633848
+    },
+    "evaluation_tick_times": {
+      "p50": 0.0016523999511264265,
+      "p95": 0.009566399996401742,
+      "p99": 0.011723369971150529,
+      "mean": 0.0030011980300608636,
+      "max": 0.012970500043593347
+    },
+    "pair_role_diagnostics": [
+      {
+        "first": 0,
+        "second": 1,
+        "early_ticks": 191,
+        "early_cpa_opening": {
+          "actor": 15.398525735154395,
+          "nominal": 0.5319838003928485
+        },
+        "minimum_distance": 36.21563328943774,
+        "first_engagement_tick": 191,
+        "first_received_peer_tick": 1,
+        "nominal_insufficient_ticks": 0,
+        "repaired_ticks": 0,
+        "warning_pair_seconds": 0.0
+      },
+      {
+        "first": 0,
+        "second": 2,
+        "early_ticks": 189,
+        "early_cpa_opening": {
+          "actor": 23.016839585854747,
+          "nominal": -0.26030005447322885
+        },
+        "minimum_distance": 25.233351235790128,
+        "first_engagement_tick": 189,
+        "first_received_peer_tick": 1,
+        "nominal_insufficient_ticks": 0,
+        "repaired_ticks": 0,
+        "warning_pair_seconds": 3.9000000000000004
+      },
+      {
+        "first": 0,
+        "second": 3,
+        "early_ticks": 32,
+        "early_cpa_opening": {
+          "actor": 17.787191424126263,
+          "nominal": 7.536971662557318
+        },
+        "minimum_distance": 359.9872252232842,
+        "first_engagement_tick": null,
+        "first_received_peer_tick": null,
+        "nominal_insufficient_ticks": 0,
+        "repaired_ticks": 0,
+        "warning_pair_seconds": 0.0
+      },
+      {
+        "first": 1,
+        "second": 2,
+        "early_ticks": 124,
+        "early_cpa_opening": {
+          "actor": 53.7656338764328,
+          "nominal": 1.0538345604669777
+        },
+        "minimum_distance": 18.059975034839717,
+        "first_engagement_tick": 124,
+        "first_received_peer_tick": 1,
+        "nominal_insufficient_ticks": 0,
+        "repaired_ticks": 0,
+        "warning_pair_seconds": 4.7
+      },
+      {
+        "first": 1,
+        "second": 3,
+        "early_ticks": 23,
+        "early_cpa_opening": {
+          "actor": -0.13554228930326567,
+          "nominal": -0.13431992038491716
+        },
+        "minimum_distance": 90.37276540948554,
+        "first_engagement_tick": null,
+        "first_received_peer_tick": null,
+        "nominal_insufficient_ticks": 0,
+        "repaired_ticks": 0,
+        "warning_pair_seconds": 0.0
+      },
+      {
+        "first": 2,
+        "second": 3,
+        "early_ticks": 32,
+        "early_cpa_opening": {
+          "actor": 9.194253033593158,
+          "nominal": 3.218732314408811
+        },
+        "minimum_distance": 176.32114408180072,
+        "first_engagement_tick": null,
+        "first_received_peer_tick": null,
+        "nominal_insufficient_ticks": 0,
+        "repaired_ticks": 0,
+        "warning_pair_seconds": 0.0
+      }
+    ]
+  },
+  "provenance": {
+    "kind": "executed",
+    "runtime": {
+      "platform": "Windows-11-10.0.26200-SP0",
+      "system": "Windows",
+      "machine": "AMD64",
+      "python": "3.12.1 | packaged by Anaconda, Inc. | (main, Jan 19 2024, 15:44:08) [MSC v.1916 64 bit (AMD64)]",
+      "logical_cpu_count": 24,
+      "numpy": "2.5.3",
+      "gymnasium": "1.3.0",
+      "torch": "2.14.0+cu126",
+      "cuda_available": true,
+      "torch_cuda": "12.6",
+      "cuda_device_count": 1,
+      "cuda_devices": [
+        "NVIDIA GeForce RTX 4080 Laptop GPU"
+      ],
+      "mps_available": false,
+      "cuda_device_memory_bytes": [
+        12878086144
+      ]
+    }
+  }
+}

@@ -1,0 +1,681 @@
+{
+  "identity": {
+    "method": "F",
+    "training_method": "F",
+    "training_seed": 0,
+    "runtime_hocbf": true,
+    "stochastic": true,
+    "checkpoint_sha256": "6d5da074ac9a833b6995eee04579d9c0d6cf84e5aeac4a8556e3ac3fb6674c35",
+    "source_sha256": "ed39050c8622fb2e7a52841c90eb17e402f411bd1d1bb6fdc6d6719d0aa62855",
+    "bank_sha256": "06c244f19868794b79b85d10e97890d706107b3eba1261869b1a4c213688a712",
+    "step_label": 30000,
+    "learning_budget": 1.5,
+    "learning_intervention_cost": false,
+    "communication_mode": "prior_share",
+    "reactive_radius": 75.0,
+    "execution_system": "Windows",
+    "runner_sha256": "fb08d506878b5361d989f2090ed0f7e2c8a1ebc63447908e5ba50f12d90ddce9"
+  },
+  "metrics": {
+    "scenario_id": "interaction_traffic_four_faces_free_n4_root202611534_0021",
+    "actual_agent_count": 4,
+    "max_agent_count": 16,
+    "episode_success": 1.0,
+    "goal_reached_count": 4,
+    "separation_violation_pair_ticks": 0,
+    "active_pair_ticks": 1663,
+    "separation_violation_rate": 0.0,
+    "path_stretch": 1.0640092263531518,
+    "pure_intervention_squared_sum": 0.8168251199860526,
+    "runtime_correction_squared_sum": 0.8168251199860525,
+    "active_agent_ticks": 1327,
+    "pure_safety_intervention_magnitude": 0.0006155426676609289,
+    "runtime_filter_correction": 0.0006155426676609289,
+    "transmitted_bytes": 256640,
+    "active_agent_seconds": 132.70000000000002,
+    "communication_load": 1933.9864355689522,
+    "terminated": true,
+    "truncated": false,
+    "episode_duration": 39.900000000000006,
+    "undiscounted_episode_cost": 1.360962939135754,
+    "discounted_episode_cost": 0.33593967610644776,
+    "start_state_cost_members": [
+      2.1285834312438965,
+      0.828382670879364
+    ],
+    "start_state_cost_mean": 1.4784830808639526,
+    "start_state_cost_std": 0.6501004099845886,
+    "start_state_cost_ucb": 2.1285834312438965,
+    "policy_execution_mode": "stochastic",
+    "initial_action_paired_with_cost_estimate": true,
+    "cost_mean_error": 1.142543404757505,
+    "cost_ucb_error": 1.7926437551374488,
+    "empirical_ucb_covers_return": true,
+    "distance_cost": 1.360962939135754,
+    "intervention_cost": 0.0,
+    "scenario_descriptor": {
+      "traffic_density": 9.110787172011662e-07,
+      "predicted_edge_count": 4,
+      "mean_degree": 2.0,
+      "max_degree": 2,
+      "edge_ratio": 0.6666666666666666,
+      "all_to_all": false,
+      "candidate_empty": false,
+      "minimum_predicted_cpa": 33.51464422883272,
+      "minimum_cpa_pair": [
+        0,
+        1
+      ],
+      "minimum_cpa_time": 16.498061860541533,
+      "earliest_candidate_cpa_time": 0.0,
+      "descriptor_d_safe": 10.0,
+      "descriptor_d_warn": 30.0,
+      "descriptor_d_eng": 50.0,
+      "candidate_fraction_cpa_le_d_eng": 0.75,
+      "candidate_fraction_cpa_le_d_warn": 0.0,
+      "candidate_fraction_cpa_lt_d_safe": 0.0,
+      "has_candidate_cpa_le_d_eng": true,
+      "has_candidate_cpa_le_d_warn": false,
+      "has_candidate_cpa_lt_d_safe": false,
+      "velocity_capability": {
+        "minimum": 10.526182757074832,
+        "maximum": 13.908825443449574,
+        "mean": 12.242609956419136,
+        "standard_deviation": 1.362997504204407,
+        "coefficient_of_variation": 0.11133226567344408
+      },
+      "acceleration_capability": {
+        "minimum": 2.4497607125286804,
+        "maximum": 3.6206024466924305,
+        "mean": 3.08097776260952,
+        "standard_deviation": 0.43273823330856775,
+        "coefficient_of_variation": 0.14045483825305122
+      },
+      "spatial_scaling_mode": "fixed",
+      "spatial_dimensions": [
+        280.0,
+        280.0,
+        56.0
+      ],
+      "spatial_volume": 4390400.0,
+      "spatial_volume_factor": 1.0,
+      "generation_attempts": 1,
+      "candidate_zero_rejections": 0,
+      "initial_cbf_edge_count": 0
+    },
+    "rollout_pair_results": [
+      {
+        "first": 0,
+        "second": 1,
+        "candidate": true,
+        "actual_minimum_distance": 21.541045865595066,
+        "cbf_engaged": true,
+        "candidate_miss": false,
+        "candidate_edge_lifetime_ticks": 374
+      },
+      {
+        "first": 0,
+        "second": 2,
+        "candidate": false,
+        "actual_minimum_distance": 122.86289606885181,
+        "cbf_engaged": false,
+        "candidate_miss": false,
+        "candidate_edge_lifetime_ticks": 0
+      },
+      {
+        "first": 0,
+        "second": 3,
+        "candidate": true,
+        "actual_minimum_distance": 63.953139929391874,
+        "cbf_engaged": false,
+        "candidate_miss": false,
+        "candidate_edge_lifetime_ticks": 181
+      },
+      {
+        "first": 1,
+        "second": 2,
+        "candidate": true,
+        "actual_minimum_distance": 47.75107380064388,
+        "cbf_engaged": true,
+        "candidate_miss": false,
+        "candidate_edge_lifetime_ticks": 373
+      },
+      {
+        "first": 1,
+        "second": 3,
+        "candidate": false,
+        "actual_minimum_distance": 169.1812171472175,
+        "cbf_engaged": false,
+        "candidate_miss": false,
+        "candidate_edge_lifetime_ticks": 0
+      },
+      {
+        "first": 2,
+        "second": 3,
+        "candidate": true,
+        "actual_minimum_distance": 45.54764157227766,
+        "cbf_engaged": true,
+        "candidate_miss": false,
+        "candidate_edge_lifetime_ticks": 181
+      }
+    ],
+    "cbf_engaged_pair_count": 3,
+    "candidate_miss_count": 0,
+    "goal_reward": 15.0,
+    "progress": 318.6377255560004,
+    "time_penalty": 3.99,
+    "absolute_distance_penalty": 0.0,
+    "residual_penalty": 2.740244839569127,
+    "mean_normalized_goal_distance": 0.423954415599563,
+    "final_goal_distance_mean": 4.705593632696541,
+    "final_goal_distance_max": 4.873081008854624,
+    "minimum_goal_distance_mean": 4.705593632696541,
+    "minimum_goal_distance_per_agent": [
+      4.612514938176193,
+      4.873081008854624,
+      4.497497793867641,
+      4.839280789887705
+    ],
+    "scenario_traffic_density": 9.110787172011662e-07,
+    "scenario_predicted_edge_count": 4,
+    "scenario_mean_degree": 2.0,
+    "scenario_max_degree": 2,
+    "scenario_edge_ratio": 0.6666666666666666,
+    "scenario_all_to_all": false,
+    "scenario_candidate_empty": false,
+    "scenario_minimum_predicted_cpa": 33.51464422883272,
+    "scenario_minimum_cpa_time": 16.498061860541533,
+    "scenario_earliest_candidate_cpa_time": 0.0,
+    "scenario_descriptor_d_safe": 10.0,
+    "scenario_descriptor_d_warn": 30.0,
+    "scenario_descriptor_d_eng": 50.0,
+    "scenario_candidate_fraction_cpa_le_d_eng": 0.75,
+    "scenario_candidate_fraction_cpa_le_d_warn": 0.0,
+    "scenario_candidate_fraction_cpa_lt_d_safe": 0.0,
+    "scenario_has_candidate_cpa_le_d_eng": true,
+    "scenario_has_candidate_cpa_le_d_warn": false,
+    "scenario_has_candidate_cpa_lt_d_safe": false,
+    "scenario_spatial_volume": 4390400.0,
+    "scenario_spatial_volume_factor": 1.0,
+    "scenario_generation_attempts": 1,
+    "scenario_candidate_zero_rejections": 0,
+    "scenario_initial_cbf_edge_count": 0,
+    "conditioned_initial_execution_action": [
+      [
+        -0.8848488926887512,
+        0.48420339822769165,
+        0.6989587545394897
+      ],
+      [
+        0.9982849955558777,
+        -0.8645020723342896,
+        -0.055455684661865234
+      ],
+      [
+        0.9783118963241577,
+        -0.9964317083358765,
+        -0.015282692387700081
+      ],
+      [
+        0.5993788242340088,
+        0.7088174819946289,
+        0.19737370312213898
+      ],
+      [
+        0.0,
+        -0.0,
+        -0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        -0.0,
+        -0.0,
+        -0.0
+      ],
+      [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      [
+        0.0,
+        -0.0,
+        -0.0
+      ],
+      [
+        -0.0,
+        -0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      [
+        0.0,
+        -0.0,
+        -0.0
+      ],
+      [
+        0.0,
+        -0.0,
+        -0.0
+      ],
+      [
+        0.0,
+        -0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ]
+    ],
+    "conditioned_initial_nominal_action": [
+      [
+        -0.47927528619766235,
+        1.6380254030227661,
+        1.0037498474121094
+      ],
+      [
+        -1.16605806350708,
+        -2.555330514907837,
+        -0.20373600721359253
+      ],
+      [
+        1.5208303928375244,
+        -3.6206023693084717,
+        -0.542811930179596
+      ],
+      [
+        0.10596466064453125,
+        2.7972333431243896,
+        0.181443989276886
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ]
+    ],
+    "rollout_initial_execution_action": [
+      [
+        -0.8848488926887512,
+        0.48420339822769165,
+        0.6989587545394897
+      ],
+      [
+        0.9982849955558777,
+        -0.8645020723342896,
+        -0.055455684661865234
+      ],
+      [
+        0.9783118963241577,
+        -0.9964317083358765,
+        -0.015282692387700081
+      ],
+      [
+        0.5993788242340088,
+        0.7088174819946289,
+        0.19737370312213898
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ]
+    ],
+    "rollout_initial_nominal_action": [
+      [
+        -0.4792754704754085,
+        1.6380246904306035,
+        1.0037498479773967
+      ],
+      [
+        -1.1660583726666673,
+        -2.5553308263374603,
+        -0.20373602769650678
+      ],
+      [
+        1.5208304745395504,
+        -3.6206024466924305,
+        -0.5428117916002252
+      ],
+      [
+        0.10596472597078144,
+        2.797232179272103,
+        0.18144401793916795
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ]
+    ],
+    "paired_initial_execution_action_max_abs_error": 0.0,
+    "paired_initial_nominal_action_max_abs_error": 1.1638522865453638e-06,
+    "paired_initial_action_matches_rollout": true,
+    "paired_initial_nominal_matches_rollout": true,
+    "method": "F",
+    "training_seed": 0,
+    "repeat": 2,
+    "rollout_rng_key": 3543892859,
+    "runtime_hocbf": true,
+    "learning_budget": 1.5,
+    "learning_intervention_cost": false,
+    "discounted_distance_cost": 0.3359396761064477,
+    "discounted_pure_cost_common": 0.0614130675636862,
+    "discounted_common_cost": 0.39735274367013396,
+    "runtime_nonzero_agent_ticks": 18,
+    "runtime_active_agent_ticks": 1327,
+    "runtime_nonzero_squared_mean": 0.04537917333255847,
+    "warning_agent_tick_fraction": 0.0452147701582517,
+    "max_abs_active_altitude": 25.755252890156456,
+    "extent_outside_agent_ticks": 118,
+    "safety_wall_times": {
+      "p50": 0.00016179995145648718,
+      "p95": 0.005754239927046001,
+      "p99": 0.007682585939764976,
+      "mean": 0.0009239501200784418,
+      "max": 0.01101140002720058
+    },
+    "evaluation_tick_times": {
+      "p50": 0.0011437999783083797,
+      "p95": 0.006943560030777003,
+      "p99": 0.009017703898716709,
+      "mean": 0.002054343859602074,
+      "max": 0.01260250003542751
+    },
+    "pair_role_diagnostics": [
+      {
+        "first": 0,
+        "second": 1,
+        "early_ticks": 109,
+        "early_cpa_opening": {
+          "actor": 9.021042632775657,
+          "nominal": -1.2752247125005174
+        },
+        "minimum_distance": 21.541045865595066,
+        "first_engagement_tick": 109,
+        "first_received_peer_tick": 1,
+        "nominal_insufficient_ticks": 9,
+        "repaired_ticks": 9,
+        "warning_pair_seconds": 3.0
+      },
+      {
+        "first": 0,
+        "second": 2,
+        "early_ticks": 148,
+        "early_cpa_opening": {
+          "actor": -17.08616416194923,
+          "nominal": -2.737294577342335
+        },
+        "minimum_distance": 122.86289606885181,
+        "first_engagement_tick": null,
+        "first_received_peer_tick": null,
+        "nominal_insufficient_ticks": 0,
+        "repaired_ticks": 0,
+        "warning_pair_seconds": 0.0
+      },
+      {
+        "first": 0,
+        "second": 3,
+        "early_ticks": 1,
+        "early_cpa_opening": {
+          "actor": 0.0,
+          "nominal": 0.0
+        },
+        "minimum_distance": 63.953139929391874,
+        "first_engagement_tick": null,
+        "first_received_peer_tick": 1,
+        "nominal_insufficient_ticks": 0,
+        "repaired_ticks": 0,
+        "warning_pair_seconds": 0.0
+      },
+      {
+        "first": 1,
+        "second": 2,
+        "early_ticks": 368,
+        "early_cpa_opening": {
+          "actor": 10.461196803611283,
+          "nominal": 0.0578640454278811
+        },
+        "minimum_distance": 47.75107380064388,
+        "first_engagement_tick": 368,
+        "first_received_peer_tick": 1,
+        "nominal_insufficient_ticks": 0,
+        "repaired_ticks": 0,
+        "warning_pair_seconds": 0.0
+      },
+      {
+        "first": 1,
+        "second": 3,
+        "early_ticks": 150,
+        "early_cpa_opening": {
+          "actor": 8.715334318873659,
+          "nominal": 0.5591576019716888
+        },
+        "minimum_distance": 169.1812171472175,
+        "first_engagement_tick": null,
+        "first_received_peer_tick": null,
+        "nominal_insufficient_ticks": 0,
+        "repaired_ticks": 0,
+        "warning_pair_seconds": 0.0
+      },
+      {
+        "first": 2,
+        "second": 3,
+        "early_ticks": 145,
+        "early_cpa_opening": {
+          "actor": 9.744212198547679,
+          "nominal": 0.48129885462262134
+        },
+        "minimum_distance": 45.54764157227766,
+        "first_engagement_tick": 145,
+        "first_received_peer_tick": 1,
+        "nominal_insufficient_ticks": 0,
+        "repaired_ticks": 0,
+        "warning_pair_seconds": 0.0
+      }
+    ]
+  },
+  "provenance": {
+    "kind": "executed",
+    "runtime": {
+      "platform": "Windows-11-10.0.26200-SP0",
+      "system": "Windows",
+      "machine": "AMD64",
+      "python": "3.12.1 | packaged by Anaconda, Inc. | (main, Jan 19 2024, 15:44:08) [MSC v.1916 64 bit (AMD64)]",
+      "logical_cpu_count": 24,
+      "numpy": "2.5.3",
+      "gymnasium": "1.3.0",
+      "torch": "2.14.0+cu126",
+      "cuda_available": true,
+      "torch_cuda": "12.6",
+      "cuda_device_count": 1,
+      "cuda_devices": [
+        "NVIDIA GeForce RTX 4080 Laptop GPU"
+      ],
+      "mps_available": false,
+      "cuda_device_memory_bytes": [
+        12878086144
+      ]
+    }
+  }
+}

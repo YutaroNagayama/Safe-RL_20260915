@@ -107,7 +107,7 @@ def test_frozen_rollout_resume_export_and_wrong_model_rejection(source,tmp_path)
         if cell['cell_type']!='code':continue
         exec(compile(''.join(cell['source']),'main_route_extension.ipynb','exec'),ns)
         if first_code:
-            ns.update(SOURCE=src,OUTPUT=output,BANK_PER_N=1,EVAL_PER_N=1,COUNTS=(2,),LEADS=(0.,1.),SEEDS=(0,),tqdm=bars)
+            ns.update(SOURCE=src,OUTPUT=output,BANK_PER_N=1,EVAL_PER_N=1,COUNTS=(2,),LEADS=(0.,1.),SEEDS=(0,),tqdm=bars,RUN_CONFIRMATION=False)
             first_code=False
     assert ns['partial']['completed_cases']==6 and ns['partial']['requested_cases']==6
     with zipfile.ZipFile(ns['archive']) as z:assert len([x for x in z.namelist() if x.endswith('.npz')])==6

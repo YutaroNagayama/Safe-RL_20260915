@@ -1,104 +1,78 @@
-# Windows追加評価：A・B75・B50の航路延長ロールアウト
+# Windows追加評価：通常条件の量拡大とA/Bs空間拡張
 
 ## 実行するもの
 
-新規学習は行わず、既存30kのA・B75・B50各3seedだけを評価する。E/R、HBA/F、別のA条件、HOCBF OFFは追加しない。学習・制御のcoreと既存のmain/additional runnerは変更していない。
+`notebooks/main/main_route_extension.ipynb`を上から実行する。新規学習は行わず、既存30kモデルを固定する。
 
-Notebook：`notebooks/main/main_route_extension.ipynb`
-実行処理：`scripts/main_route_extension_runner.py`
+| 実験 | 方式 | 初回の評価量 | 保存先 |
+| --- | --- | --- | --- |
+| ①元条件の確認評価 | A/B75/B50各3seed＋E各形状1回 | 各N25形状、計100形状・1,000episode | results/main_confirmation_20261127 |
+| ②空間拡張1条件 | A/B75/B50各3seed | 各N10形状、計40形状・360episode | results/main_spatial_extension_single_20261127 |
 
-## 航路・空間の拡張
+**合計1,360episode**。従来案の4,000＋1,080episodeから削減した。試走は本実行で再利用するため追加のepisodeではない。①を完了・zip保存した後、②へ進む。方式・seed・形状は直列実行し、並列workerは使用しない。学習・制御のcoreと既存main/additional/航路延長runnerは変更していない。
 
-新しい四方交通の元形状を生成し、予測CPA<10mかつ予測接近時刻>1秒のペアを含む形状を選ぶ。N=2/4/8は少なくとも1ペア、N=16は少なくとも2ペアを指定危険ペアとする。最長延長条件の指定ペアは開始時150m以上離れている。
+## ① 元条件の評価量拡大
 
-同じ元形状に対して、開始位置を
+実行処理は`scripts/main_confirmation_runner.py`。SOURCEの既存`banks/confirmation_test.json`を元manifestのSHA256と照合し、そのまま利用する。元の四方交通、初期離隔30m、機体性能、予測horizon50秒、最大stepを維持する。低CPAや結果で形状を選別しない。
 
-`p_extended = p_original - v_initial * LEAD`
+bank自体は各N100形状で固定し、初回は事前に決めた各N25形状だけ評価する。既存分析の48形状から100形状へ増やす。必要なら`CONFIRM_EVAL_PER_N`を50、100へ増やし、同じ保存先へ未完了分だけ追加できる。結果を見て形状を選び直さない。
 
-とし、LEAD=0/20/40秒の条件を作る。目標・航路方向・初速・能力は維持する。各指定ペアの予測CPA距離が同じで、予測CPA時刻がLEAD分だけ遅れることを生成時に検査する。全ペアの初期離隔30mも各条件で検査し、不適合形状は採用しない。面ごとの機数割当は強制しない。
+EはReference＋HOCBFで構築し、各形状1回だけ評価する。3seed分の独立標本として水増ししない。比較方式・指標・CPA層別・集計方針を`experiment.json`の`analysis_plan`に固定する。N別を主に、全N等重み集計を併記する。
 
-これは元の交差領域と出口を残し、四方からの進入航路を後方へ延ばす試験である。出発点は共通の大きな正方形外周に揃えない。3D航路に沿って延長するため、水平・高度方向のextentも変わる。壁・高度制限を追加した実験ではない。
+GitによるLF/CRLF変換は、元hashに完全一致するバイト列へ復元できる場合だけ許容し、内容変更は拒否する。
 
-20/40秒は初速での予測時間の増分。Referenceは加速するので、実際の情報猶予・遭遇時刻の増分は生軌跡から測る。予測は同じ数式・75m閾値を使い、horizonだけ50/70/90秒へ延ばして元の遭遇を範囲内に残す。この評価時パラメータ変更を記録し、元mainの50秒条件と混同しない。終了上限も全bankの経路時間に合わせて延長する。
+## ② 空間拡張は1条件だけ
 
-## Windowsでの起動
+実行処理は従来の`scripts/main_route_extension_runner.py`。Notebookは`LEADS=(40.,)`とし、**0/20/40秒の条件比較は行わない**。全方式は同じ拡張形状・同じ能力・同じ目標を使う。E/R、HBA/F、HOCBF OFFは②に追加しない。
 
-結果ファイルを持つ`codex/main-additional-results-20261126`を土台にした実装ブランチを使う。mainだけへ切り替えて結果JSONが見えなくなる以前の問題を避ける。
+四方交通の元形状から予測CPA<10m、予測接近時刻>1秒のペアを含む形状を生成する。N=2/4/8は少なくとも1ペア、N=16は少なくとも2ペアを指定危険ペアとする。開始地点を
 
-```powershell
-git fetch origin
-git switch codex/main-route-extension
-```
+`p_extended = p_original - v_initial * 40`
 
-いつものPython環境で`notebooks/main/main_route_extension.ipynb`を開き、上から実行する。
+で航路沿いに後方へ延ばし、交差領域・出口・ゴール・初速・能力を保持する。40秒は延長距離を決める内部的な換算量であり、時間別の実験群ではない。予測CPA距離を保ち、接近時刻が40秒後ろへずれることを検査する。全ペアの初期離隔30m、指定ペアの初期距離150m以上も検査する。面ごとの機数割当は強制しない。
 
-既定パス：
+3D航路に沿った延長なので水平・高度方向のextentが変わり、出発点は共通の大きな正方形外周には揃えない。壁・高度制限は追加しない。Referenceは加速するため、実際の猶予は生軌跡で確認する。
 
-- SOURCE：`results/main_additional_20261120`
-- OUTPUT：`results/main_route_extension_20261127`
+従来の拡張仕様として、予測horizonは90秒へ、終了上限も長い航路に合わせて延長する。通常条件の50秒horizonとは区別して記録する。実際の空間寸法・延長量・初期条件をすべて保存する。
 
-SOURCEの`suite.json`に記録された親実験からA/B75、追加実験子ディレクトリからB50を読む。export zipを展開した場合は`SOURCE/models/A|B75|B50/seed_XXX/model_30000.pt`も使える。不足・方式・半径・学習予算・元rolloutのモデルhashが異なる場合は停止し、別モデルで代用しない。
+`BANK_PER_N=100`で固定し、初回は`EVAL_PER_N=10`だけ実行する。必要なら同じbankで評価量だけ追加できる。旧0/20/40秒版とは保存先を分けるため、旧結果を消す必要はない。
 
-## 既定の実験量と段階的な追加
+## Notebookの設定と起動
 
-| 設定 | 既定値 | 意味 |
-| --- | --- | --- |
-| BANK_PER_N | 100 | 最初に固定する独立元形状/N |
-| COUNTS | 2/4/8/16 | 開始機数 |
-| LEADS | 0/20/40秒 | 同一元形状の延長条件 |
-| EVAL_PER_N | 10 | 今回評価する元形状/N |
-| SEEDS | 0/1/2 | 既存学習seed |
-| EVALUATION_DEVICE | cpu | 小型ActorとCPU安全QPを直列評価 |
+いつものPython環境でNotebookを開く。SOURCEは`results/main_additional_20261120`。親実験のA/B75、追加実験のB50、またはSOURCE/modelsの正規名モデルを利用する。不足・方式・半径・予算・モデルhashが違う場合は停止し、別モデルで代用しない。
 
-bankは400元形状×3延長=1,200シナリオ。最初はそのうち40元形状×3延長×3方式×3seed、**1,080episode**を評価する。
+| 設定 | 既定値 |
+| --- | --- |
+| RUN_CONFIRMATION / RUN_EXTENSION | True / True |
+| CONFIRM_BANK_PER_N / CONFIRM_EVAL_PER_N | 100 / 25 |
+| BANK_PER_N / EVAL_PER_N | 100 / 10 |
+| COUNTS / SEEDS | (2,4,8,16) / (0,1,2) |
+| LEADS | (40.,) の1条件 |
+| EVALUATION_DEVICE | cpu |
+| RUN_PROBE / RUN_FULL / RUN_EXPORT | True / True / True |
 
-`EVAL_PER_N=100`に増やせば同じbank・同じOUTPUTで**10,800episode**まで追加できる。完了ケースは再実行しない。BANK_PER_N/LEADS/COUNTS/生成条件を変える場合は別OUTPUTが必要。
+①は最小/最大Nの2形状×4方式＝8case、②は最小/最大Nの2形状×3方式＝6caseをseed0で試走し、本実行で再利用する。`RUN_FULL=False`なら試走だけ。片方のRUNフラグをFalseにすればもう片方だけ実施できる。
 
-最初に最小/最大N×最短/最長延長の4シナリオをseed0の3方式、計12caseで確認する。短時間確認だけにする場合は`RUN_FULL=False`。この確認結果も全量評価で再利用する。RUN_FULL=Trueが既定で、その後は今回の1,080episodeへ進む。
+## 進捗・保存・持ち帰り
 
-CPU/GPU、N、航路長によって速度が変わるため、全量の所要時間はWindowsの確認実行で判断する。Macの合成テスト時間を本番見積もりには使わない。
+- case数と飛行中の実step数を別のtqdmで表示する。
+- 1モデルずつロードし、新規学習や巨大Replay保存を行わない。
+- 各caseで生NPZ・指標を保存し、最後に完了markerを原子的に書く。
+- 途中再開時は条件identityと生NPZの初期条件を照合し、完了caseを再実行しない。中断された1caseは再実行する。
+- bank・モデル・runner・デバイスが変わった結果の混在を拒否する。
+- 途中停止後も各実験の集計・取り出しセルを単独実行できる。
 
-## 保存・進捗・中断再開
+zipは別々に出力する。
 
-- case数の進捗と、飛行中の実step数を別のtqdmで表示。
-- 1モデルずつロード、1caseずつ実行。並列workerや巨大Replay保存は行わない。
-- caseごとに生NPZ・指標・出典を保存し、最後に完了markerを原子的に書く。
-- 中断された1caseはやり直す。完了marker、条件identity、生NPZの初期条件が一致したcaseは再実行しない。
-- モデルhash・bank・runner・実行デバイスが変わった保存先への混在を拒否。
-- 途中でも`status(OUTPUT)`で集計・CSVを更新できる。
-- timeoutを含むepisode時間と、成功時の完了時間・経路比を区別。失敗ケースを黙って除外しない。
+- `results/main_confirmation_20261127_results.zip`
+- `results/main_spatial_extension_single_20261127_results.zip`
 
-主な保存物：
+生NPZ、JSON/CSV、bank、条件・出典、評価用モデル、全ファイルのhash/byte数を同梱する。Replay/optimizer再開checkpointとruntime一時ファイルは除外する。Gitの結果JSONだけでは、gitignoreされたモデルやzipは転送されないので、zip自体をMacへ運ぶ。
 
-- `experiment.json`：固定条件、bank digest、source、最大step。
-- `banks/base.json`：独立元形状。
-- `banks/route_extension.json`：全延長条件の共通シナリオ。
-- `models_manifest.json`：使用したA/B75/B50の実ファイル・hash。
-- `evaluation/mean/<method>/seed_XXX/cases/<id>/`：生NPZ、episode指標、完了marker。
-- `episodes.csv` / `result_status.json`：途中を含む全件・N/延長別集計。
+## 解析と検証
 
-## 結果をMacへ運び出す
+通常条件と低CPAを多く含む空間拡張結果を混ぜて平均しない。指定危険ペアが接近しなかった予防成功例も残す。初期CPA別の接近距離分布・接近率、介入時間/強度/割引および未割引Cost、QP可解性/fallback、到達効率、通信を解析する。延長条件の割引Costは接近時刻の遅れでも小さくなるため、未割引の負担と併記する。
 
-Notebook末尾の`export_results(OUTPUT, include_models=True)`を実行する。既定では
+成功限定の経路比/完了時間と、timeoutを含むepisode時間を分ける。CSVの違反判定は記録点の判定で、生NPZから区間内最近接も後処理できる。
 
-`results/main_route_extension_20261127_results.zip`
-
-を出力する。途中停止後にもこのセルだけ実行できる。zipには生NPZ、bank、条件・出典、CSV、**使用した評価用モデル**を含める。再開用Replay/optimizerの巨大checkpointとruntime一時ファイルは除外する。`export_manifest.json`で各ファイルのSHA256とbyte数を確認できる。
-
-モデルだけでも各約12.5MB、全9個で約113MBになる。生軌跡が多いので実zipを直接転送する。Gitの結果コミットだけでは、gitignore対象のモデルやzipが移らないことに注意する。
-
-## 解析上の扱い
-
-- 比較するのはA/B75/B50の3方式のみ。全方式は同じbank、初期条件、能力、目標、候補定義を使う。
-- 同じ元形状の0/20/40秒条件は対応標本で、独立形状として水増ししない。
-- 指定危険ペアが接近しなかったケースも残す。接近したペアだけに絞ると予防成功を落とす。
-- 未割引距離Cost、介入時間/強度、可解性/fallback、情報取得、Actor変化、到達効率を解析する。
-- 大きいLEADでは割引Costが時間経過だけで小さくなるため、それだけで改善と判断しない。
-- CSVの違反件数は記録点の判定。従来同様、生NPZから区間内距離まで後処理できる。
-- 大きい位置・目標距離は学習範囲外にもなる。結果は通常mainの平均性能や未使用最終testとは分けた追加ストレス評価として扱う。
-
-## 検証
-
-新規テストは、CPA距離保持・接近時刻シフト・初期間隔、bank再現性と改変拒否、frozenモデル評価、step表示による軌跡不変、途中再開、Notebook全セルの小規模実行、partial zipとモデル同梱、モデル変更拒否を確認する。既存追加実験のテストも併走する。
-
-実データのbank生成確認は、各N2元形状で8元形状・24条件を生成し、最小初期距離31.52m、40秒延長時の指定ペア初期距離は最小227.18m、水平extent最大約943mを確認した。学習済みmainモデルの実rolloutはMacに重みがないため未実施で、Windowsで行う。
+合成の小規模モデルで、bank同一性・改変拒否・LF/CRLF復元、4方式の同一初期条件、進捗表示による軌跡不変、E非重複、再開・段階追加、モデル変更拒否、モデル付きzip、統合Notebook全セルを確認する。航路延長の旧複数条件も後方互換の検証として残す。本番の学習済みモデルでの実走と所要時間はWindowsで確認する。

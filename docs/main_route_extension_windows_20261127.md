@@ -2,14 +2,14 @@
 
 ## 実行するもの
 
-`notebooks/main/main_route_extension.ipynb`を上から実行する。新規学習は行わず、既存30kモデルを固定する。
+`notebooks/main/main_route_extension.ipynb`を上から実行する。①②は新規学習を行わず、既存30kモデルを固定する。続く③でA_main_v1.1の追加学習と比較まで進む。③の実行仕様は[main_v1.1を含むWindows一括実行](main_v1_1_windows_20261127.md)を参照。
 
 | 実験 | 方式 | 初回の評価量 | 保存先 |
 | --- | --- | --- | --- |
 | ①元条件の確認評価 | A/B75/B50各3seed＋E各形状1回 | 各N25形状、計100形状・1,000episode | results/main_confirmation_20261127 |
 | ②空間拡張1条件 | A/B75/B50各3seed | 各N10形状、計40形状・360episode | results/main_spatial_extension_single_20261127 |
 
-**合計1,360episode**。従来案の4,000＋1,080episodeから削減した。試走は本実行で再利用するため追加のepisodeではない。①を完了・zip保存した後、②へ進む。方式・seed・形状は直列実行し、並列workerは使用しない。学習・制御のcoreと既存main/additional/航路延長runnerは変更していない。
+**①②合計1,360episode**。従来案の4,000＋1,080episodeから削減した。試走は本実行で再利用するため追加のepisodeではない。①を完了・zip保存した後、②へ進む。方式・seed・形状は直列実行し、並列workerは使用しない。学習・制御のcoreと既存main/additional/航路延長runnerは変更していない。
 
 ## ① 元条件の評価量拡大
 

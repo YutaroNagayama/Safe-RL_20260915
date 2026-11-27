@@ -111,7 +111,7 @@ def test_combined_notebook_all_cells(source, tmp_path):
         if first:
             ns.update(SOURCE=source, OUTPUT=tmp_path / 'extension', CONFIRM_OUTPUT=tmp_path / 'confirmation',
                       CONFIRM_BANK_PER_N=2, CONFIRM_EVAL_PER_N=2, BANK_PER_N=1, EVAL_PER_N=1,
-                      COUNTS=(2,), LEADS=(1.,), SEEDS=(0,), tqdm=bars)
+                      COUNTS=(2,), LEADS=(1.,), SEEDS=(0,), tqdm=bars, RUN_V11=False)
             first = False
         # Keep the stress fixture short; the production extension limit is unchanged.
         if 'experiment' in ns and (tmp_path / 'extension/experiment.json').exists():
